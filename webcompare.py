@@ -19,7 +19,7 @@ class Walker(object):
         self.target_url_parts = urlparse(target_url_base)
         self.comparators = []
         self.results = []
-        self.origin_urls_todo = []
+        self.origin_urls_todo = [self.origin_url_base]
         self.origin_urls_visited = []
 
     def _texas_ranger(self):
@@ -28,10 +28,17 @@ class Walker(object):
     def _fetch_url(self, url):
         """Retrieve a page by URL, return as HTTP response (with response code, etc)
         This could be overriden, e.g., to use an asynchronous call.
+        If this causes an exception, we just leave it for the caller.
+        """
+        return urllib2.urlopen(url)
+
+    def _fetch_url_content(self, url):
+        """Retrieve the content of a resource at a given URL.
+        If this causes an exception, we just leave it for the caller.
         TODO: this should return a yield so we can handle large pages.
         """
-        site = urllib2.urlopen(url)
-        return site.read()
+        page = self._fetch_url(url)
+        return page.read()
     
     def _get_target_url(self, origin_url):
         """Return URL for target based on origin_url.
@@ -51,7 +58,7 @@ class Walker(object):
         Not by testing the URL or anything clever, but just comparing
         the first part of the URL.
         """
-        return self.origin_url_base.startswith(url)
+        return url.startswith(self.origin_url_base)
     
     def _get_urls(self, html, base_href):
         """Return list of objects representing absolute URLs found in the html.
@@ -70,26 +77,54 @@ class Walker(object):
         Each compartor should return a floating point number between
         0.0 and 1.0 indicating how "close" the match is.
         """
-        self.compartors.append(comparator_function)
+        self.comparators.append(comparator_function)
 
         
-    def walk_and_compare(self, origin_url=None):
+    def walk_and_compare(self):
         """Start at origin_url, generate target urls, run comparators, return dict of results.
         If there are no comparators, we will just return all the origin and target urls
         and any redirects we've encountered. 
-        I need to think about how to do this,
-        need to dork with the params.
         """
-        if origin_url == None:
-            origin_url = self.origin_url_base
-        if origin_url in self.origin_urls_visited:
-            logging.info("Already visited target_url=%s" % origin_url)
-        elif not self._is_within_origin(origin_url):
-            logging.warning("url=%s is not within origin_url=%s" % (origin_url, self.origin_url))
-        else:
-            self.origin_urls_visited.append(origin_url)
-            target_url = self._get_target_url(origin_url)
-            response = self._get_target_url(target_url)
-            # ... parse good response for URLs, add to todo list
+        while self.origin_urls_todo:
+            origin_url = self.origin_urls_todo.pop(0)
+            logging.info("todo=%s visited=%s try url=%s" % (
+                    len(self.origin_urls_todo),
+                    len(self.origin_urls_visited),
+                    origin_url))
+            if origin_url in self.origin_urls_visited:
+                logging.debug("Skip already visited target_url=%s" % origin_url)
+            else:
+                self.origin_urls_visited.append(origin_url)
+                target_url = self._get_target_url(origin_url)
+                self.origin_urls_visited.append(target_url)
+                try:
+                    response = None # don't leave any leftover stuff to confuse us
+                    response = self._fetch_url(target_url)
+                    code = response.code
+                except urllib2.URLError, e:
+                    logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
+                    code = e.code
+                    # TODO: record and bail here, so we don't have to check code below.
+                if code != 200:
+                    logging.warning("No success code=%s finding target_url=%s" % (code, target_url))
+                    # TODO: add code, (redirected) url to results dictlist
+                else:
+                    ct = response.headers['content-type'].split(';')[0]
+                    if ct != "text/html":
+                        logging.debug("Not parsing non-html content-type=%s" % ct)
+                    else:
+                        content = response.read()
+                        # TODO: how do we get the real abs url or our response's request obj?
+                        url_objs = self._get_urls(content, response.url)
+                        for url_obj in url_objs:
+                            url = url_obj[2]
+                            if not self._is_within_origin(url):
+                                logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
+                            else:
+                                logging.debug("adding URL=%s" % url_obj[2])
+                                self.origin_urls_todo.append(url_obj[2])
+
             
-            
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    print "this is webcompare.py"
