@@ -1,5 +1,7 @@
 import logging
 from urlparse import urlparse
+import urllib2
+import lxml.html
 
 class Walker(object):
     """
@@ -20,14 +22,20 @@ class Walker(object):
         self.origin_urls_todo = []
         self.origin_urls_visited = []
 
+    def _texas_ranger(self):
+        return "I think our next place to search is where military and wannabe military types hang out."
+
     def _fetch_url(self, url):
         """Retrieve a page by URL, return as HTTP response (with response code, etc)
         This could be overriden, e.g., to use an asynchronous call.
+        TODO: this should return a yield so we can handle large pages.
         """
-        pass
+        site = urllib2.urlopen(url)
+        return site.read()
     
     def _get_target_url(self, origin_url):
         """Return URL for target based on origin_url.
+        TODO: ? use lxml.html.rewrite_links(repl_func, ...)
         """
         u = urlparse(origin_url)
         return "%s://%s%s%s%s%s" % (self.target_url_parts.scheme,
@@ -45,6 +53,18 @@ class Walker(object):
         """
         return self.origin_url_base.startswith(url)
     
+    def _get_urls(self, html, base_href):
+        """Return list of objects representing absolute URLs found in the html.
+        [(element, attr, link, pos) ...]
+        TODO: May want to normalize these
+        - Need to make URLs absolute, take into account this doc's URL as base (?)
+        - .resolve_base_href()
+        - .make_links_absolute(base_href, resolve_base_href=True)
+        """
+        tree = lxml.html.fromstring(html)
+        tree.make_links_absolute(base_href, resolve_base_href=True)
+        return tree.iterlinks()
+
     def add_comparator(self, comparator_function):
         """Add a comparator method to the list of compartors to try.
         Each compartor should return a floating point number between
