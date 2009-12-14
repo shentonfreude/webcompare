@@ -124,7 +124,7 @@ class Walker(object):
                     logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
                     self.results.append(Result(origin_url, e.code))
                     continue
-                if origin_response.code != 200:
+                if origin_response.code != 200: # TODO: do I need this check?
                     logging.warning("No success code=%s finding origin_url=%s" % (
                             origin_response.code, origin_url))
                     self.results.append(Result(origin_url, origin_response.code))
@@ -133,7 +133,7 @@ class Walker(object):
                     ct = origin_response.headers['content-type'].split(';')[0]
                     if ct != "text/html":
                         #logging.debug("Not parsing non-html content-type=%s" % ct)
-                        continue
+                        pass    # don't 'continue' here, need to try corresponding targets
                     else:
                         content = origin_response.read()
                         # TODO: how do we get the real abs url or our response's request obj?
