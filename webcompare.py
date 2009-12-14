@@ -3,6 +3,10 @@ from urlparse import urlparse
 import urllib2
 import lxml.html
 
+# TODO:
+# - lxml.html.clean: can it strip all HTML markup?
+# - htmltree.text_content(): returns text of element sans markup, but also sans spaces where tags used to be
+
 class Walker(object):
     """
     Walk origin URL, generate target URLs, retrieve both pages for comparison.
@@ -67,6 +71,8 @@ class Walker(object):
         - Need to make URLs absolute, take into account this doc's URL as base (?)
         - .resolve_base_href()
         - .make_links_absolute(base_href, resolve_base_href=True)
+        - See absolutizing here:
+          http://blog.ianbicking.org/2008/12/10/lxml-an-underappreciated-web-scraping-library
         """
         tree = lxml.html.fromstring(html)
         tree.make_links_absolute(base_href, resolve_base_href=True)
@@ -93,10 +99,11 @@ class Walker(object):
                     origin_url))
             if origin_url in self.origin_urls_visited:
                 logging.debug("Skip already visited target_url=%s" % origin_url)
+                
+                continue
             else:
                 self.origin_urls_visited.append(origin_url)
                 target_url = self._get_target_url(origin_url)
-                self.origin_urls_visited.append(target_url)
                 try:
                     response = None # don't leave any leftover stuff to confuse us
                     response = self._fetch_url(target_url)
@@ -123,8 +130,41 @@ class Walker(object):
                             else:
                                 logging.debug("adding URL=%s" % url_obj[2])
                                 self.origin_urls_todo.append(url_obj[2])
-
+# TODO: instantiation and invocation of Normalizer and Comparator
+#       feels stilted and awkward. 
             
+class Normalizer(object):
+    """TODO: should I be subclassing an LXML stipper? (oh baby)
+    """
+    def __init__(self, htmlstring):
+        self.htree = lxml.html.fromstring(htmlstring)
+    def normalize(self):
+        return self.htree.text_content().lower() # TODO removes spaces implied by tags??
+
+class Comparator(object):
+    """Compare two strings, return number 0-100 representing less-more similarity.
+    Examples:
+    - compare normalized <title>
+    - compare length of normalized text
+    - compare (fuzzily) similarity of normalized
+    - compare (fuzzily) rendered web page image
+    - compare 'features' extracted with OpenCalais et al
+    """
+    def __init__(self, this, that):
+        self.match_nothing = 0
+        self.match_perfect = 100
+        self.this = this
+        self.that = that
+
+    def compare(self):
+        """This is expected to be subclassed.
+        """
+        if self.this == self.that:
+            return self.match_perfect
+        else:
+            return self.match_nothing
+        
+    
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     print "this is webcompare.py"

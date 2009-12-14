@@ -1,11 +1,10 @@
 import unittest
-import webcompare
 
 class TestWebCompare(unittest.TestCase):
 
     def setUp(self):
-        self.walker = webcompare.Walker("http://origin.int",
-                                        "http://target.int")
+        from webcompare import Walker
+        self.walker = Walker("http://origin.int", "http://target.int")
 
     def test___init__(self):
         self.assertEquals(self.walker.origin_url_base, "http://origin.int")
@@ -50,6 +49,32 @@ class TestWebCompare(unittest.TestCase):
             pass
         self.walker.add_comparator(bogus_comparator)
         self.assertEquals(self.walker.comparators[-1], bogus_comparator)
+
+class TestNormalizer(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test___init__(self):
+        from webcompare import Normalizer
+        normalizer = Normalizer("<html><head><title>TITLE</title></head><body><h1>HEADING</h1><p>PARA<i>ITAL</i></p></body></html>")
+        normalized = normalizer.normalize()
+        self.assertEquals("titleheadingparaital", normalized)
+
+class TestComparator(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test___init__perfect(self):
+        from webcompare import Comparator
+        comparator = Comparator("foo", "foo")
+        self.assertEquals(comparator.compare(), comparator.match_perfect)
+
+    def test___init__nothing(self):
+        from webcompare import Comparator
+        comparator = Comparator("foo", "bar")
+        self.assertEquals(comparator.compare(), comparator.match_nothing)
 
 if __name__ == '__main__':
     unittest.main()
