@@ -76,6 +76,32 @@ class TestComparator(unittest.TestCase):
         comparator = Comparator("foo", "bar")
         self.assertEquals(comparator.compare(), comparator.match_nothing)
 
+class TestResult(unittest.TestCase):
+
+    def setUp(self):
+        from webcompare import Result
+        self.Result = Result
+
+    def test___init__origin(self):
+        r = self.Result("originurl", 666)
+        self.assertEquals(r.origin_url, "originurl")
+        self.assertEquals(r.origin_response_code, 666)
+        self.assertEquals(r.target_url, None)
+        self.assertEquals(r.target_response_code, None)
+        self.assertEquals(r.comparisons, [])
+        self.assertEquals(r.__repr__(), "originurl 666 None None")
+
+    def test___init__target(self):
+        r = self.Result("originurl", 666, "targeturl", 777)
+        self.assertEquals(r.target_url, "targeturl")
+        self.assertEquals(r.target_response_code, 777)
+        self.assertEquals(r.comparisons, [])
+        self.assertEquals(r.__repr__(), "originurl 666 targeturl 777")
+
+    def test___init__comparisons(self):
+        r = self.Result("originurl", 666, "targeturl", 777, [1,2,3])
+        self.assertEquals(r.comparisons, [1,2,3])
+
 if __name__ == '__main__':
     unittest.main()
 

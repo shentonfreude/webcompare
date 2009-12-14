@@ -5,7 +5,23 @@ import lxml.html
 
 # TODO:
 # - lxml.html.clean: can it strip all HTML markup?
-# - htmltree.text_content(): returns text of element sans markup, but also sans spaces where tags used to be
+
+class Result(object):
+    """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
+    """
+    def __init__(self, origin_url, origin_response_code,
+                 target_url=None, target_response_code=None,
+                 comparisons=[]):
+        self.origin_url = origin_url
+        self.origin_response_code = origin_response_code
+        self.target_url = target_url
+        self.target_response_code = target_response_code
+        self.comparisons = comparisons
+
+    def __repr__(self):
+        return "%s %s %s %s" % (self.origin_url, self.origin_response_code,
+                                self.target_url, self.target_response_code)
+
 
 class Walker(object):
     """
@@ -99,37 +115,51 @@ class Walker(object):
                     origin_url))
             if origin_url in self.origin_urls_visited:
                 logging.debug("Skip already visited target_url=%s" % origin_url)
-                
                 continue
             else:
                 self.origin_urls_visited.append(origin_url)
-                target_url = self._get_target_url(origin_url)
                 try:
-                    response = None # don't leave any leftover stuff to confuse us
-                    response = self._fetch_url(target_url)
-                    code = response.code
+                    origin_response = self._fetch_url(origin_url)
                 except urllib2.URLError, e:
-                    logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
-                    code = e.code
-                    # TODO: record and bail here, so we don't have to check code below.
-                if code != 200:
-                    logging.warning("No success code=%s finding target_url=%s" % (code, target_url))
-                    # TODO: add code, (redirected) url to results dictlist
+                    logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
+                    self.results.append(Result(origin_url, e.code))
+                    continue
+                if origin_response.code != 200:
+                    logging.warning("No success code=%s finding origin_url=%s" % (
+                            origin_response.code, origin_url))
+                    self.results.append(Result(origin_url, origin_response.code))
+                    continue
                 else:
-                    ct = response.headers['content-type'].split(';')[0]
+                    ct = origin_response.headers['content-type'].split(';')[0]
                     if ct != "text/html":
-                        logging.debug("Not parsing non-html content-type=%s" % ct)
+                        #logging.debug("Not parsing non-html content-type=%s" % ct)
+                        continue
                     else:
-                        content = response.read()
+                        content = origin_response.read()
                         # TODO: how do we get the real abs url or our response's request obj?
-                        url_objs = self._get_urls(content, response.url)
+                        url_objs = self._get_urls(content, origin_response.url)
                         for url_obj in url_objs:
                             url = url_obj[2]
                             if not self._is_within_origin(url):
                                 logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
-                            else:
-                                logging.debug("adding URL=%s" % url_obj[2])
-                                self.origin_urls_todo.append(url_obj[2])
+                            elif url not in self.origin_urls_todo:
+                                logging.debug("adding URL=%s" % url)
+                                self.origin_urls_todo.append(url)
+                    target_url = self._get_target_url(origin_url)
+                    logging.debug("about to fetch target_url=%s" % target_url)
+                    try:
+                        target_response = self._fetch_url(target_url)
+                    except urllib2.URLError, e:
+                        logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
+                        self.results.append(Result(origin_url, e.code,
+                                                   target_url=target_url, target_response_code=e.code))
+                        continue
+                    self.results.append(Result(origin_url, origin_response.code,
+                                               target_url=target_url, target_response_code=target_response.code))
+
+                    
+
+
 # TODO: instantiation and invocation of Normalizer and Comparator
 #       feels stilted and awkward. 
             
