@@ -19,8 +19,10 @@ class Result(object):
         self.comparisons = comparisons
 
     def __repr__(self):
-        return "%s %s %s %s" % (self.origin_url, self.origin_response_code,
-                                self.target_url, self.target_response_code)
+        return "<Result o=%s oc=%s t=%s tc=%s comp=%s>" % (
+            self.origin_url, self.origin_response_code,
+            self.target_url, self.target_response_code,
+            self.comparisons)
 
 
 class Walker(object):
@@ -95,8 +97,8 @@ class Walker(object):
         return tree.iterlinks()
 
     def add_comparator(self, comparator_function):
-        """Add a comparator method to the list of compartors to try.
-        Each compartor should return a floating point number between
+        """Add a comparator method to the list of comparators to try.
+        Each comparator should return a floating point number between
         0.0 and 1.0 indicating how "close" the match is.
         """
         self.comparators.append(comparator_function)
@@ -151,11 +153,20 @@ class Walker(object):
                         target_response = self._fetch_url(target_url)
                     except urllib2.URLError, e:
                         logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
-                        self.results.append(Result(origin_url, e.code,
+                        self.results.append(Result(origin_url, origin_response.code,
                                                    target_url=target_url, target_response_code=e.code))
                         continue
+                    # If we got here, we got origin and target so run comparators
+                    # TODO BUGBUG: does the first comparator's read() consume all data
+                    # which would cause the second to get nothing? If so, what do we do? 
+                    comparisons = []
+                    for comparator in self.comparators:
+                        proximity = comparator.compare(origin_response, target_response)
+                        logging.info("comparator=%s proxmity=%s" % (comparator,proximity))
+                        comparisons.append(proximity)
                     self.results.append(Result(origin_url, origin_response.code,
-                                               target_url=target_url, target_response_code=target_response.code))
+                                               target_url=target_url, target_response_code=target_response.code,
+                                               comparisons=comparisons))
 
                     
 
@@ -172,7 +183,7 @@ class Normalizer(object):
         return self.htree.text_content().lower() # TODO removes spaces implied by tags??
 
 class Comparator(object):
-    """Compare two strings, return number 0-100 representing less-more similarity.
+    """Compare HTTP responses, return number 0-100 representing less-more similarity.
     Examples:
     - compare normalized <title>
     - compare length of normalized text
@@ -180,20 +191,53 @@ class Comparator(object):
     - compare (fuzzily) rendered web page image
     - compare 'features' extracted with OpenCalais et al
     """
-    def __init__(self, this, that):
+    def __init__(self):
         self.match_nothing = 0
         self.match_perfect = 100
-        self.this = this
-        self.that = that
 
-    def compare(self):
+    def compare(self, origin_response, target_response):
         """This is expected to be subclassed.
         """
-        if self.this == self.that:
+        raise RuntimeError, "You must subclass %s and return a value between match_nothing and match_perfect" % self.__class__
+        
+class ContentComparator(Comparator):
+    """Compare content from the reponse
+    """
+    def compare(self, origin_response, target_response):
+        if origin_response.read() == target_response.read():
             return self.match_perfect
         else:
             return self.match_nothing
         
+class TitleComparator(Comparator):
+    """Compare <title> content from the reponse
+    """
+    # TODO BUGBUG: this seems to get '' from read() even if only comparator, why??
+    def compare(self, origin_response, target_response):
+        origin_content = origin_response.read()
+        target_content = target_response.read()
+        import pdb; pdb.set_trace()
+        origin_tree = lxml.html.fromstring(origin_content)
+        target_tree = lxml.html.fromstring(target_content)
+        try:
+            origin_title = origin_tree.xpath("//html/head/title")[0].text
+            target_title = target_tree.xpath("//html/head/title")[0].text
+        except Exception, e:
+            print "HELP ME WHAT IS MY EXCEPTION e=%s" % e
+            return self.match_nothing
+        if origin_title == target_title:
+            return self.match_perfect
+        else:
+            return self.match_nothing
+
+        
+def testit():
+    from pprint import pprint as pp
+    w = Walker("http://chris.shenton.org/recipes/bread", "http://chris.shenton.org/recipes/bread")
+    w.add_comparator(ContentComparator())
+    #w.add_comparator(TitleComparator())
+    w.walk_and_compare()
+    pp(w.results)
     
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
