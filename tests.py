@@ -68,12 +68,14 @@ class TestComparator(unittest.TestCase):
 
     def test___init__perfect(self):
         from webcompare import Comparator
-        comparator = Comparator("foo", "foo")
+        comparator = Comparator()
+        # TBD fix tests
         self.assertEquals(comparator.compare(), comparator.match_perfect)
 
     def test___init__nothing(self):
         from webcompare import Comparator
-        comparator = Comparator("foo", "bar")
+        comparator = Comparator()
+        # TBD fix tests
         self.assertEquals(comparator.compare(), comparator.match_nothing)
 
 class TestResult(unittest.TestCase):
@@ -89,18 +91,40 @@ class TestResult(unittest.TestCase):
         self.assertEquals(r.target_url, None)
         self.assertEquals(r.target_response_code, None)
         self.assertEquals(r.comparisons, [])
-        self.assertEquals(r.__repr__(), "originurl 666 None None")
+        self.assertEquals(r.__repr__(), "<Result o=originurl oc=666 t=None tc=None comp=[]>")
 
     def test___init__target(self):
         r = self.Result("originurl", 666, "targeturl", 777)
+        self.assertEquals(r.origin_url, "originurl")
+        self.assertEquals(r.origin_response_code, 666)
         self.assertEquals(r.target_url, "targeturl")
         self.assertEquals(r.target_response_code, 777)
         self.assertEquals(r.comparisons, [])
-        self.assertEquals(r.__repr__(), "originurl 666 targeturl 777")
+        self.assertEquals(r.__repr__(), "<Result o=originurl oc=666 t=targeturl tc=777 comp=[]>")
 
     def test___init__comparisons(self):
         r = self.Result("originurl", 666, "targeturl", 777, [1,2,3])
         self.assertEquals(r.comparisons, [1,2,3])
+
+class TestResponse(unittest.TestCase):
+    def setUp(self):
+        from webcompare import Response
+        from urllib2 import urlopen
+        self.Response = Response
+        self.urlopen = urlopen
+        self.url = "http://google.com"
+        
+    def test_http_response(self):
+        r = self.Response(self.urlopen(self.url))
+        self.assertEquals(r.code, 200)
+        self.assertEquals(r.url, "http://www.google.com/")
+        self.assertEquals(r.content_type, "text/html; charset=ISO-8859-1")
+        self.assertTrue("I'm Feeling Lucky" in r.content)
+        self.assertNotEqual(r.htmltree, None)
+        
+                        
+                          
+        
 
 if __name__ == '__main__':
     unittest.main()

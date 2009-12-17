@@ -25,6 +25,27 @@ class Result(object):
             self.comparisons)
 
 
+class Response(object):
+    """Capture HTTP response and content, as a lxml tree if HTML.
+    Store info returned from, e.g., urllib2.urlopen(url)
+    We need to read content once since we can't reread already-read content.
+    We could parse this and save contained URLs? Not generic enough?
+    TODO: should subclass (undocumented) urllib2.urlopen() return object urllib.addinfourl ?
+          instead of copying all its attrs into our own? 
+    TODO: should we avid non-html content?
+    """
+    def __init__(self, http_response):
+        self.http_response = http_response
+        self.code = self.http_response.code
+        self.url = self.http_response.geturl()
+        self.content_type = self.http_response.headers['content-type']
+        self.content = self.http_response.read()
+        if self.content_type.startswith("text/html"):
+            self.htmltree = lxml.html.fromstring(self.content)
+            self.htmltree.make_links_absolute(self.url, resolve_base_href=True)
+        else:
+            self.htmltree = None
+        
 class Walker(object):
     """
     Walk origin URL, generate target URLs, retrieve both pages for comparison.
@@ -48,19 +69,11 @@ class Walker(object):
         return "I think our next place to search is where military and wannabe military types hang out."
 
     def _fetch_url(self, url):
-        """Retrieve a page by URL, return as HTTP response (with response code, etc)
+        """Retrieve a page by URL, return as Response object (code, content, htmltree, etc)
         This could be overriden, e.g., to use an asynchronous call.
         If this causes an exception, we just leave it for the caller.
         """
-        return urllib2.urlopen(url)
-
-    def _fetch_url_content(self, url):
-        """Retrieve the content of a resource at a given URL.
-        If this causes an exception, we just leave it for the caller.
-        TODO: this should return a yield so we can handle large pages.
-        """
-        page = self._fetch_url(url)
-        return page.read()
+        return Response(urllib2.urlopen(url))
     
     def _get_target_url(self, origin_url):
         """Return URL for target based on origin_url.
@@ -82,7 +95,7 @@ class Walker(object):
         """
         return url.startswith(self.origin_url_base)
     
-    def _get_urls(self, html, base_href):
+    def _get_urls(self, html, base_href): # UNUSED?
         """Return list of objects representing absolute URLs found in the html.
         [(element, attr, link, pos) ...]
         TODO: May want to normalize these
@@ -132,15 +145,8 @@ class Walker(object):
                     self.results.append(Result(origin_url, origin_response.code))
                     continue
                 else:
-                    ct = origin_response.headers['content-type'].split(';')[0]
-                    if ct != "text/html":
-                        #logging.debug("Not parsing non-html content-type=%s" % ct)
-                        pass    # don't 'continue' here, need to try corresponding targets
-                    else:
-                        content = origin_response.read()
-                        # TODO: how do we get the real abs url or our response's request obj?
-                        url_objs = self._get_urls(content, origin_response.url)
-                        for url_obj in url_objs:
+                    if origin_response.content_type.startswith("text/html"):
+                        for url_obj in origin_response.htmltree.iterlinks():
                             url = url_obj[2]
                             if not self._is_within_origin(url):
                                 logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
@@ -156,12 +162,12 @@ class Walker(object):
                         self.results.append(Result(origin_url, origin_response.code,
                                                    target_url=target_url, target_response_code=e.code))
                         continue
-                    # If we got here, we got origin and target so run comparators
+                    # If we got here, we got origin and target so run compare HTML trees
                     # TODO BUGBUG: does the first comparator's read() consume all data
                     # which would cause the second to get nothing? If so, what do we do? 
                     comparisons = []
                     for comparator in self.comparators:
-                        proximity = comparator.compare(origin_response, target_response)
+                        proximity = comparator.compare(origin_response.htmltree, target_response.htmltree)
                         logging.info("comparator=%s proxmity=%s" % (comparator,proximity))
                         comparisons.append(proximity)
                     self.results.append(Result(origin_url, origin_response.code,
@@ -183,28 +189,42 @@ class Normalizer(object):
         return self.htree.text_content().lower() # TODO removes spaces implied by tags??
 
 class Comparator(object):
-    """Compare HTTP responses, return number 0-100 representing less-more similarity.
+    """Compare HTML trees, return number 0-100 representing less-more similarity.
     Examples:
     - compare normalized <title>
     - compare length of normalized text
     - compare (fuzzily) similarity of normalized
     - compare (fuzzily) rendered web page image
     - compare 'features' extracted with OpenCalais et al
+    TODO: are we going to compare non-HTML responses?
+          If so, we can't presume HTML-Tree objects as inputs.
     """
     def __init__(self):
         self.match_nothing = 0
         self.match_perfect = 100
 
     def compare(self, origin_response, target_response):
-        """This is expected to be subclassed.
+        """This is expected to be subclassed and then superclass invoked.
         """
-        raise RuntimeError, "You must subclass %s and return a value between match_nothing and match_perfect" % self.__class__
+        if origin_htmltree == None and target_htmltree == None:
+            return self.match_perfect
+        if origin_htmltree == None or target_htmltree == None:
+            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
+                    origin_htmltree, target_htmltree))
+            return self.match_nothing
         
 class ContentComparator(Comparator):
     """Compare content from the reponse
     """
-    def compare(self, origin_response, target_response):
-        if origin_response.read() == target_response.read():
+    def compare(self, origin_htmltree, target_htmltree):
+        #TODO: something like: self.super(compare(original_html, target_html))
+        if origin_htmltree == None and target_htmltree == None:
+            return self.match_perfect
+        if origin_htmltree == None or target_htmltree == None:
+            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
+                    origin_htmltree, target_htmltree))
+            return self.match_nothing
+        if origin_htmltree.text_content() == target_htmltree.text_content():
             return self.match_perfect
         else:
             return self.match_nothing
@@ -213,15 +233,17 @@ class TitleComparator(Comparator):
     """Compare <title> content from the reponse
     """
     # TODO BUGBUG: this seems to get '' from read() even if only comparator, why??
-    def compare(self, origin_response, target_response):
-        origin_content = origin_response.read()
-        target_content = target_response.read()
-        import pdb; pdb.set_trace()
-        origin_tree = lxml.html.fromstring(origin_content)
-        target_tree = lxml.html.fromstring(target_content)
+    def compare(self, origin_htmltree, target_htmltree):
+        #import pdb; pdb.set_trace()
+        if origin_htmltree == None and target_htmltree == None:
+            return self.match_perfect
+        if origin_htmltree == None or target_htmltree == None:
+            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
+                    origin_htmltree, target_htmltree))
+            return self.match_nothing
         try:
-            origin_title = origin_tree.xpath("//html/head/title")[0].text
-            target_title = target_tree.xpath("//html/head/title")[0].text
+            origin_title = origin_htmltree.xpath("//html/head/title")[0].text
+            target_title = target_htmltree.xpath("//html/head/title")[0].text
         except Exception, e:
             print "HELP ME WHAT IS MY EXCEPTION e=%s" % e
             return self.match_nothing
@@ -230,12 +252,33 @@ class TitleComparator(Comparator):
         else:
             return self.match_nothing
 
+class BodyComparator(Comparator):
+    def compare(self, origin_htmltree, target_htmltree):
+        if origin_htmltree == None and target_htmltree == None:
+            return self.match_perfect
+        if origin_htmltree == None or target_htmltree == None:
+            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
+                    origin_htmltree, target_htmltree))
+            return self.match_nothing
+        try:
+            origin_body = origin_htmltree.xpath("//html/body")[0].text_content.lower()
+            target_body = origin_htmltree.xpath("//html/body")[0].text_content.lower()
+        except Exception, e:
+            print "HELP ME WHAT IS MY EXCEPTION e=%s" % e
+            return self.match_nothing
+        if origin_body == target_body:
+            return self.match_perfect
+        else:
+            return self.match_nothing
+            
         
 def testit():
     from pprint import pprint as pp
-    w = Walker("http://chris.shenton.org/recipes/bread", "http://chris.shenton.org/recipes/bread")
+    w = Walker("http://www.nasa.gov/centers/hq/home/", "http://www.nasa.gov/centers/hq/home/")
+    #"http://chris.shenton.org/recipes/bread", "http://chris.shenton.org/recipes/bread")
     w.add_comparator(ContentComparator())
-    #w.add_comparator(TitleComparator())
+    w.add_comparator(TitleComparator())
+    w.add_comparator(BodyComparator())
     w.walk_and_compare()
     pp(w.results)
     
