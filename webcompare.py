@@ -6,6 +6,8 @@ import urllib2
 import lxml.html
 from difflib import SequenceMatcher
 from optparse import OptionParser
+import json
+import sys
 from pprint import pprint as pp
 
 class Result(object):
@@ -119,10 +121,21 @@ class Walker(object):
         self.comparators.append(comparator_function)
 
         
+    def json_results(self):
+        """Return the JSON representation.
+        Hopefully will allow clever JS tricks to render and sort in browser.
+        """
+        d = [dict(origin_url=r.origin_url, origin_response_code=r.origin_response_code,
+                  target_url=r.target_url, target_response_code=r.target_response_code,
+                  comparisons=r.comparisons)
+             for r in self.results]
+        return json.dumps(d, sort_keys=True, indent=4)
+    
     def walk_and_compare(self):
         """Start at origin_url, generate target urls, run comparators, return dict of results.
         If there are no comparators, we will just return all the origin and target urls
         and any redirects we've encountered. 
+        TODO: remove unneeded testing and logging, clean up if/else/continue
         """
         while self.origin_urls_todo:
             origin_url = self.origin_urls_todo.pop(0)
@@ -177,10 +190,6 @@ class Walker(object):
                                                comparisons=comparisons))
 
                     
-
-# TODO: method to output JSON results
-
-
 
 # TODO: instantiation and invocation of Normalizer and Comparator feels stilted and awkward. 
             
@@ -273,6 +282,8 @@ class RatioComparator(Comparator):
         return self.unfraction(sm.ratio())
         
 def testit():
+    """Used in editor/python development
+    """
     w = Walker("http://www.nasa.gov/centers/hq/home/", "http://www.nasa.gov/centers/hq/home/")
     #"http://chris.shenton.org/recipes/bread", "http://chris.shenton.org/recipes/bread")
     w.add_comparator(ContentComparator())
@@ -284,10 +295,10 @@ def testit():
     pp(w.results)
     
 if __name__ == "__main__":
-    print "this is webcompare.py"
-    usage = "usage: %prog [options] originurl targeturl"
+    usage = "usage: %prog [--verbose --file json_output_file_path] origin_url target_url"
     parser = OptionParser(usage)
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", help="log info about processing")
+    parser.add_option("-f", "--file", dest="filename", help="path to store the json results to (default is stdout)")
     (options, args) = parser.parse_args()
     if len(args) != 2:
         parser.error("Must specify origin and target urls")
@@ -303,6 +314,12 @@ if __name__ == "__main__":
     w.add_comparator(RatioComparator())
     w.walk_and_compare()
     pp(w.results)
+    if options.filename:
+        f = open(options.filename, "w")
+    else:
+        f = sys.stdout
+    f.write(w.json_results())
+    f.close()
 
 
         
