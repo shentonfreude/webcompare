@@ -1,17 +1,19 @@
+#!/usr/bin/env python
+
 import logging
 from urlparse import urlparse
 import urllib2
 import lxml.html
-
-# TODO:
-# - lxml.html.clean: can it strip all HTML markup?
+from difflib import SequenceMatcher
+from optparse import OptionParser
+from pprint import pprint as pp
 
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
     """
     def __init__(self, origin_url, origin_response_code,
                  target_url=None, target_response_code=None,
-                 comparisons=[]):
+                 comparisons={}):
         self.origin_url = origin_url
         self.origin_response_code = origin_response_code
         self.target_url = target_url
@@ -40,6 +42,10 @@ class Response(object):
         self.url = self.http_response.geturl()
         self.content_type = self.http_response.headers['content-type']
         self.content = self.http_response.read()
+        try:
+            self.content_length = int(self.http_response.headers['content-length'])
+        except KeyError, e:
+            self.content_length = len(self.content)
         if self.content_type.startswith("text/html"):
             self.htmltree = lxml.html.fromstring(self.content)
             self.htmltree.make_links_absolute(self.url, resolve_base_href=True)
@@ -76,17 +82,13 @@ class Walker(object):
         return Response(urllib2.urlopen(url))
     
     def _get_target_url(self, origin_url):
-        """Return URL for target based on origin_url.
-        TODO: ? use lxml.html.rewrite_links(repl_func, ...)
+        """Return URL for target based on (absolute) origin_url.
+        TODO: do I want to handle relative origin_urls?
         """
-        u = urlparse(origin_url)
-        return "%s://%s%s%s%s%s" % (self.target_url_parts.scheme,
-                                    self.target_url_parts.netloc,
-                                    u.path,
-                                    u.params,
-                                    u.query,
-                                    u.fragment,
-                                    )
+        if not origin_url.startswith(self.origin_url_base):
+            raise ValueError, "origin_url=%s does not start with origin_url_base=%s" % (
+                origin_url, self.origin_url_base)
+        return origin_url.replace(self.origin_url_base, self.target_url_base, 1)
 
     def _is_within_origin(self, url):
         """Return whether a url is within the origin_url hierarchy.
@@ -162,23 +164,25 @@ class Walker(object):
                         self.results.append(Result(origin_url, origin_response.code,
                                                    target_url=target_url, target_response_code=e.code))
                         continue
-                    # If we got here, we got origin and target so run compare HTML trees
-                    # TODO BUGBUG: does the first comparator's read() consume all data
-                    # which would cause the second to get nothing? If so, what do we do? 
-                    comparisons = []
-                    for comparator in self.comparators:
-                        proximity = comparator.compare(origin_response.htmltree, target_response.htmltree)
-                        logging.info("comparator=%s proxmity=%s" % (comparator,proximity))
-                        comparisons.append(proximity)
+                    comparisons = {}
+                    if origin_response.htmltree == None or target_response.htmltree == None:
+                        logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
+                                origin_response.htmltree, target_response.htmltree))
+                    else:
+                        for comparator in self.comparators:
+                            proximity = comparator.compare(origin_response, target_response)
+                            comparisons[comparator.__class__.__name__] = proximity
                     self.results.append(Result(origin_url, origin_response.code,
                                                target_url=target_url, target_response_code=target_response.code,
                                                comparisons=comparisons))
 
                     
 
+# TODO: method to output JSON results
 
-# TODO: instantiation and invocation of Normalizer and Comparator
-#       feels stilted and awkward. 
+
+
+# TODO: instantiation and invocation of Normalizer and Comparator feels stilted and awkward. 
             
 class Normalizer(object):
     """TODO: should I be subclassing an LXML stipper? (oh baby)
@@ -203,28 +207,20 @@ class Comparator(object):
         self.match_nothing = 0
         self.match_perfect = 100
 
+    def unfraction(self, number):
+        """Convert a 0 - 1 fractional into our match range"""
+        return int((self.match_perfect - self.match_nothing) * number)
+    
     def compare(self, origin_response, target_response):
         """This is expected to be subclassed and then superclass invoked.
         """
-        if origin_htmltree == None and target_htmltree == None:
-            return self.match_perfect
-        if origin_htmltree == None or target_htmltree == None:
-            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
-                    origin_htmltree, target_htmltree))
-            return self.match_nothing
+        raise RuntimeError, "You need to subclass class=%s" % self.__class__.__name__
         
 class ContentComparator(Comparator):
-    """Compare content from the reponse
+    """Compare exact content from the reponse
     """
-    def compare(self, origin_htmltree, target_htmltree):
-        #TODO: something like: self.super(compare(original_html, target_html))
-        if origin_htmltree == None and target_htmltree == None:
-            return self.match_perfect
-        if origin_htmltree == None or target_htmltree == None:
-            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
-                    origin_htmltree, target_htmltree))
-            return self.match_nothing
-        if origin_htmltree.text_content() == target_htmltree.text_content():
+    def compare(self, origin_response, target_response):
+        if origin_response.htmltree.text_content() == target_response.htmltree.text_content():
             return self.match_perfect
         else:
             return self.match_nothing
@@ -232,20 +228,13 @@ class ContentComparator(Comparator):
 class TitleComparator(Comparator):
     """Compare <title> content from the reponse
     """
-    # TODO BUGBUG: this seems to get '' from read() even if only comparator, why??
-    def compare(self, origin_htmltree, target_htmltree):
-        #import pdb; pdb.set_trace()
-        if origin_htmltree == None and target_htmltree == None:
-            return self.match_perfect
-        if origin_htmltree == None or target_htmltree == None:
-            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
-                    origin_htmltree, target_htmltree))
-            return self.match_nothing
+    def compare(self, origin_response, target_response):
+        origin_title = target_title = None
         try:
-            origin_title = origin_htmltree.xpath("//html/head/title")[0].text
-            target_title = target_htmltree.xpath("//html/head/title")[0].text
-        except Exception, e:
-            print "HELP ME WHAT IS MY EXCEPTION e=%s" % e
+            origin_title = origin_response.htmltree.xpath("//html/head/title")[0].text
+            target_title = target_response.htmltree.xpath("//html/head/title")[0].text
+        except IndexError, e:
+            logging.warning("Couldn't find a origin_title=%s or target_title=%s" % (origin_title, target_title))
             return self.match_nothing
         if origin_title == target_title:
             return self.match_perfect
@@ -253,35 +242,69 @@ class TitleComparator(Comparator):
             return self.match_nothing
 
 class BodyComparator(Comparator):
-    def compare(self, origin_htmltree, target_htmltree):
-        if origin_htmltree == None and target_htmltree == None:
-            return self.match_perfect
-        if origin_htmltree == None or target_htmltree == None:
-            logging.warning("compare: None for origin_htmltree=%s or target_htmltree=%s" % (
-                    origin_htmltree, target_htmltree))
-            return self.match_nothing
+    def compare(self, origin_response, target_response):
+        origin_body = target_body = None
         try:
-            origin_body = origin_htmltree.xpath("//html/body")[0].text_content.lower()
-            target_body = origin_htmltree.xpath("//html/body")[0].text_content.lower()
-        except Exception, e:
-            print "HELP ME WHAT IS MY EXCEPTION e=%s" % e
+            origin_body = origin_response.htmltree.xpath("//html/body")[0].text_content().lower()
+            target_body = target_response.htmltree.xpath("//html/body")[0].text_content().lower()
+        except (IndexError, AttributeError), e:
+            logging.warning("Couldn't find a origin_body=%s or target_body=%s" % (origin_body, target_body))
+            import pdb; pdb.set_trace()
             return self.match_nothing
         if origin_body == target_body:
             return self.match_perfect
         else:
             return self.match_nothing
-            
+
+class LengthComparator(Comparator):
+    def compare(self, origin_response, target_response):
+        olen = origin_response.content_length
+        tlen = target_response.content_length
+        if olen == 0 or tlen == 0:
+            logging.warning("Zero length olen=%s tlen=%s" % (olen, tlen))
+            return self.match_nothing
+        if olen < tlen:
+            return self.unfraction(olen / tlen)
+        return self.unfraction(tlen / olen)
+        
+class RatioComparator(Comparator):
+    def compare(self, origin_response, target_response):
+        sm = SequenceMatcher(None, origin_response.content, target_response.content)
+        return self.unfraction(sm.ratio())
         
 def testit():
-    from pprint import pprint as pp
     w = Walker("http://www.nasa.gov/centers/hq/home/", "http://www.nasa.gov/centers/hq/home/")
     #"http://chris.shenton.org/recipes/bread", "http://chris.shenton.org/recipes/bread")
     w.add_comparator(ContentComparator())
     w.add_comparator(TitleComparator())
     w.add_comparator(BodyComparator())
+    w.add_comparator(LengthComparator())
+    w.add_comparator(RatioComparator())
     w.walk_and_compare()
     pp(w.results)
     
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
     print "this is webcompare.py"
+    usage = "usage: %prog [options] originurl targeturl"
+    parser = OptionParser(usage)
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
+    (options, args) = parser.parse_args()
+    if len(args) != 2:
+        parser.error("Must specify origin and target urls")
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    w = Walker(args[0], args[1])
+    w.add_comparator(ContentComparator())
+    w.add_comparator(TitleComparator())
+    w.add_comparator(BodyComparator())
+    w.add_comparator(LengthComparator())
+    w.add_comparator(RatioComparator())
+    w.walk_and_compare()
+    pp(w.results)
+
+
+        
+            
+               

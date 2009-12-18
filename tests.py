@@ -14,17 +14,23 @@ class TestWebCompare(unittest.TestCase):
     def test_walker_texas_ranger(self):
         self.assert_("wannabe military type" in self.walker._texas_ranger())
 
-    def test__fetch_url_content(self):
-        content = self.walker._fetch_url_content("http://google.com")
-        self.assert_("Feeling Lucky" in content)
+    def test_fetch_url_content(self):
+        response = self.walker._fetch_url("http://google.com")
+        self.assert_("Feeling Lucky" in response.content)
         
     def test__get_target_url_abs(self):
         turl = self.walker._get_target_url("http://origin.int/foo/bar/stuff.png")
         self.assertEquals(turl, "http://target.int/foo/bar/stuff.png")
 
+    def test__get_target_url_fragment(self):
+        turl = self.walker._get_target_url("http://origin.int/centers/hq/home/#maincontent")
+        self.assertEquals(turl, "http://target.int/centers/hq/home/#maincontent")
+        turl = self.walker._get_target_url("http://origin.int/centers/hq/home/index.html#maincontent")
+        self.assertEquals(turl, "http://target.int/centers/hq/home/index.html#maincontent")
+
+
     def test__get_target_url_rel(self):
-        turl = self.walker._get_target_url("/foo/bar/stuff.png")
-        self.assertEquals(turl, "http://target.int/foo/bar/stuff.png")
+        self.assertRaises(ValueError, self.walker._get_target_url, "/foo/bar/stuff.png")
 
     def test__is_within_origin(self):
         self.assertTrue(self.walker._is_within_origin("http://origin.int/some/where"))
