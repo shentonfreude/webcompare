@@ -313,7 +313,6 @@ if __name__ == "__main__":
     w.add_comparator(LengthComparator())
     w.add_comparator(RatioComparator())
     w.walk_and_compare()
-    pp(w.results)
     if options.filename:
         f = open(options.filename, "w")
     else:
