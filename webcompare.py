@@ -3,6 +3,7 @@
 import logging
 from urlparse import urlparse
 import urllib2
+import httplib
 import lxml.html
 from difflib import SequenceMatcher
 from optparse import OptionParser
@@ -139,9 +140,9 @@ class Walker(object):
         """
         while self.origin_urls_todo:
             origin_url = self.origin_urls_todo.pop(0)
-            logging.info("todo=%s visited=%s try url=%s" % (
-                    len(self.origin_urls_todo),
+            logging.info("visited=%s todo=%s try url=%s" % (
                     len(self.origin_urls_visited),
+                    len(self.origin_urls_todo),
                     origin_url))
             if origin_url in self.origin_urls_visited:
                 logging.debug("Skip already visited target_url=%s" % origin_url)
@@ -150,9 +151,9 @@ class Walker(object):
                 self.origin_urls_visited.append(origin_url)
                 try:
                     origin_response = self._fetch_url(origin_url)
-                except urllib2.URLError, e:
+                except (urllib2.URLError, httplib.BadStatusLine), e:
                     logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
-                    self.results.append(Result(origin_url, e.code))
+                    self.results.append(Result(origin_url, getattr(e, 'code', 0))) # don't get HTTP code if DNS not found
                     continue
                 if origin_response.code != 200: # TODO: do I need this check?
                     logging.warning("No success code=%s finding origin_url=%s" % (
