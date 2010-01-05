@@ -24,6 +24,11 @@ class Result(object):
         self.comparisons = comparisons
 
     def __repr__(self):
+        return dict(origin_url=self.origin_url, origin_response_code=self.origin_response_code,
+                    target_url=self.target_url, target_response_code=self.target_response_code,
+                    comparisons=self.comparisons)
+
+    def __str__(self):
         return "<Result o=%s oc=%s t=%s tc=%s comp=%s>" % (
             self.origin_url, self.origin_response_code,
             self.target_url, self.target_response_code,
@@ -122,14 +127,18 @@ class Walker(object):
         self.comparators.append(comparator_function)
 
         
+    def jsonify(self, r):
+        """Return the JSON representation of a single result.
+        """
+        return dict(origin_url=r.origin_url, origin_response_code=r.origin_response_code,
+                    target_url=r.target_url, target_response_code=r.target_response_code,
+                    comparisons=r.comparisons)
+    
     def json_results(self):
         """Return the JSON representation.
         Hopefully will allow clever JS tricks to render and sort in browser.
         """
-        d = [dict(origin_url=r.origin_url, origin_response_code=r.origin_response_code,
-                  target_url=r.target_url, target_response_code=r.target_response_code,
-                  comparisons=r.comparisons)
-             for r in self.results]
+        d = [self.jsonify(r) for r in self.results]
         return json.dumps(d, sort_keys=True, indent=4)
     
     def walk_and_compare(self):
@@ -153,12 +162,16 @@ class Walker(object):
                     origin_response = self._fetch_url(origin_url)
                 except (urllib2.URLError, httplib.BadStatusLine), e:
                     logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
-                    self.results.append(Result(origin_url, getattr(e, 'code', 0))) # don't get HTTP code if DNS not found
+                    result = Result(origin_url, getattr(e, 'code', 0)) # no HTTP code if DNS not found
+                    self.results.append(result)
+                    logging.info("result(err resp): %s" % result)
                     continue
                 if origin_response.code != 200: # TODO: do I need this check?
                     logging.warning("No success code=%s finding origin_url=%s" % (
                             origin_response.code, origin_url))
-                    self.results.append(Result(origin_url, origin_response.code))
+                    result = Result(origin_url, origin_response.code)
+                    self.results.append(result)
+                    logging.info("result(err code): %s" % result)
                     continue
                 else:
                     if origin_response.content_type.startswith("text/html"):
@@ -175,8 +188,10 @@ class Walker(object):
                         target_response = self._fetch_url(target_url)
                     except urllib2.URLError, e:
                         logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
-                        self.results.append(Result(origin_url, origin_response.code,
-                                                   target_url=target_url, target_response_code=e.code))
+                        result = Result(origin_url, origin_response.code,
+                                        target_url=target_url, target_response_code=e.code)
+                        self.results.append(result)
+                        logging.info("result(err targ): %s" % result)
                         continue
                     comparisons = {}
                     if origin_response.htmltree == None or target_response.htmltree == None:
@@ -186,9 +201,11 @@ class Walker(object):
                         for comparator in self.comparators:
                             proximity = comparator.compare(origin_response, target_response)
                             comparisons[comparator.__class__.__name__] = proximity
-                    self.results.append(Result(origin_url, origin_response.code,
-                                               target_url=target_url, target_response_code=target_response.code,
-                                               comparisons=comparisons))
+                    result = Result(origin_url, origin_response.code,
+                                    target_url=target_url, target_response_code=target_response.code,
+                                    comparisons=comparisons)
+                    self.results.append(result)
+                    logging.info("result(OK  targ): %s" % result)
 
                     
 
@@ -236,18 +253,21 @@ class ContentComparator(Comparator):
             return self.match_nothing
         
 class TitleComparator(Comparator):
-    """Compare <title> content from the reponse
+    """Compare <title> content from the reponse in a fuzzy way.
+    Origin: "NASA Science", Target: "Site Map - NASA Science"
     """
     def compare(self, origin_response, target_response):
         origin_title = target_title = None
+        import pdb; pdb.set_trace()
         try:
             origin_title = origin_response.htmltree.xpath("//html/head/title")[0].text
             target_title = target_response.htmltree.xpath("//html/head/title")[0].text
         except IndexError, e:
             logging.warning("Couldn't find a origin_title=%s or target_title=%s" % (origin_title, target_title))
             return self.match_nothing
-        if origin_title == target_title:
-            return self.match_perfect
+        if origin_title and target_title:
+            sm = SequenceMatcher(None, origin_title, target_title)
+            return self.unfraction(sm.ratio())
         else:
             return self.match_nothing
 
@@ -316,12 +336,9 @@ if __name__ == "__main__":
     w.walk_and_compare()
     if options.filename:
         f = open(options.filename, "w")
+        ftmp = open(options.filename + ".tmp", "w")
     else:
         f = sys.stdout
+        ftmp = open("/dev/null", "w") # likely to fail on WinDoze (but what doesn't?)
     f.write(w.json_results())
     f.close()
-
-
-        
-            
-               
