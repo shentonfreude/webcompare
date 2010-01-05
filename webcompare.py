@@ -258,7 +258,6 @@ class TitleComparator(Comparator):
     """
     def compare(self, origin_response, target_response):
         origin_title = target_title = None
-        import pdb; pdb.set_trace()
         try:
             origin_title = origin_response.htmltree.xpath("//html/head/title")[0].text
             target_title = target_response.htmltree.xpath("//html/head/title")[0].text
@@ -279,7 +278,6 @@ class BodyComparator(Comparator):
             target_body = target_response.htmltree.xpath("//html/body")[0].text_content().lower()
         except (IndexError, AttributeError), e:
             logging.warning("Couldn't find a origin_body=%s or target_body=%s" % (origin_body, target_body))
-            import pdb; pdb.set_trace()
             return self.match_nothing
         if origin_body == target_body:
             return self.match_perfect
