@@ -11,6 +11,15 @@ import json
 import sys
 from pprint import pprint as pp
 
+# We've got some URLs like in Glossary that add no value but hugely inflate the search space.
+# This should probably be handled with command line options.
+# It might need to (d)evolve to use regexps but this is faster for now.
+# Make this downcase so we don't have to do it ourselves.
+
+IGNORE_URLS_CONTAINING = ( "?searchterm=",
+                           "?searchabletext=",
+                           )
+
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
     """
@@ -104,6 +113,12 @@ class Walker(object):
         the first part of the URL.
         """
         return url.startswith(self.origin_url_base)
+
+    def _ignore_url(self, url):
+        for ignore in IGNORE_URLS_CONTAINING:
+            if ignore in url.lower():
+                return True
+        return False
     
     def _get_urls(self, html, base_href): # UNUSED?
         """Return list of objects representing absolute URLs found in the html.
@@ -179,6 +194,8 @@ class Walker(object):
                             url = url_obj[2]
                             if not self._is_within_origin(url):
                                 logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
+                            elif self._ignore_url(url):
+                                logging.info("Skip ignorable url=%s" % url)
                             elif url not in self.origin_urls_todo:
                                 logging.debug("adding URL=%s" % url)
                                 self.origin_urls_todo.append(url)
