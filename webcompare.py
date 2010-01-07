@@ -238,19 +238,25 @@ class Comparator(object):
         """Convert a 0 - 1 fractional into our match range"""
         return int((self.match_perfect - self.match_nothing) * number)
     
+    def fuzziness(self, origin_text, target_text):
+        """Return a fuzzy comparison value for the two (preprocessed) texts"""
+        if origin_text and target_text:
+            sm = SequenceMatcher(None,
+                                 self.collapse_whitespace(origin_text).lower(),
+                                 self.collapse_whitespace(target_text).lower())
+            return self.unfraction(sm.ratio())
+        else:
+            return self.match_nothing
+        
+    def collapse_whitespace(self, text):
+        """Collapse multiple whitespace chars to a single space.
+        """
+        return ' '.join(text.split())
+        
     def compare(self, origin_response, target_response):
         """This is expected to be subclassed and then superclass invoked.
         """
         raise RuntimeError, "You need to subclass class=%s" % self.__class__.__name__
-        
-class ContentComparator(Comparator):
-    """Compare exact content from the reponse
-    """
-    def compare(self, origin_response, target_response):
-        if origin_response.htmltree.text_content() == target_response.htmltree.text_content():
-            return self.match_perfect
-        else:
-            return self.match_nothing
         
 class TitleComparator(Comparator):
     """Compare <title> content from the reponse in a fuzzy way.
@@ -264,11 +270,11 @@ class TitleComparator(Comparator):
         except IndexError, e:
             logging.warning("Couldn't find a origin_title=%s or target_title=%s" % (origin_title, target_title))
             return self.match_nothing
-        if origin_title and target_title:
-            sm = SequenceMatcher(None, origin_title, target_title)
-            return self.unfraction(sm.ratio())
-        else:
-            return self.match_nothing
+        return self.fuzziness(origin_title, target_title)
+
+class ContentComparator(Comparator):
+    def compare(self, origin_response, target_response):
+        return self.fuzziness(origin_response.content, target_response.content)
 
 class BodyComparator(Comparator):
     def compare(self, origin_response, target_response):
@@ -279,10 +285,7 @@ class BodyComparator(Comparator):
         except (IndexError, AttributeError), e:
             logging.warning("Couldn't find a origin_body=%s or target_body=%s" % (origin_body, target_body))
             return self.match_nothing
-        if origin_body == target_body:
-            return self.match_perfect
-        else:
-            return self.match_nothing
+        return self.fuzziness(origin_body, target_body)
 
 class LengthComparator(Comparator):
     def compare(self, origin_response, target_response):
@@ -291,27 +294,14 @@ class LengthComparator(Comparator):
         if olen == 0 or tlen == 0:
             logging.warning("Zero length olen=%s tlen=%s" % (olen, tlen))
             return self.match_nothing
+        olen = float(olen)
+        tlen = float(tlen)
         if olen < tlen:
-            return self.unfraction(olen / tlen)
-        return self.unfraction(tlen / olen)
+            fraction = olen / tlen
+        else:
+            fraction = tlen / olen
+        return self.unfraction(fraction)
         
-class RatioComparator(Comparator):
-    def compare(self, origin_response, target_response):
-        sm = SequenceMatcher(None, origin_response.content, target_response.content)
-        return self.unfraction(sm.ratio())
-        
-def testit():
-    """Used in editor/python development
-    """
-    w = Walker("http://www.nasa.gov/centers/hq/home/", "http://www.nasa.gov/centers/hq/home/")
-    #"http://chris.shenton.org/recipes/bread", "http://chris.shenton.org/recipes/bread")
-    w.add_comparator(ContentComparator())
-    w.add_comparator(TitleComparator())
-    w.add_comparator(BodyComparator())
-    w.add_comparator(LengthComparator())
-    w.add_comparator(RatioComparator())
-    w.walk_and_compare()
-    pp(w.results)
     
 if __name__ == "__main__":
     usage = "usage: %prog [--verbose --file json_output_file_path] origin_url target_url"
@@ -326,11 +316,10 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.INFO)
     w = Walker(args[0], args[1])
-    w.add_comparator(ContentComparator())
+    w.add_comparator(LengthComparator())
     w.add_comparator(TitleComparator())
     w.add_comparator(BodyComparator())
-    w.add_comparator(LengthComparator())
-    w.add_comparator(RatioComparator())
+    w.add_comparator(ContentComparator())
     w.walk_and_compare()
     if options.filename:
         f = open(options.filename, "w")
