@@ -22,6 +22,13 @@ IGNORE_URLS_CONTAINING = ( "?searchterm=",
                            "?searchabletext=",
                            )
 
+URL_SUBRE = [re.compile(subre) for subre in
+             ("\?.*",
+              "#.*",
+              "<bound method.*",
+              "/RSS*",
+              )]
+
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
     """
@@ -88,8 +95,6 @@ class Walker(object):
         self.comparators = []
         self.results = []
         # Perhaps these should be Sets so I don't inadvertantly repeat
-        self.origin_urls_todo = [self.origin_url_base]
-        self.origin_urls_visited = []
 
     def _texas_ranger(self):
         return "I think our next place to search is where military and wannabe military types hang out."
@@ -130,10 +135,8 @@ class Walker(object):
         I know: I should pre-compile these.
         """
         # TODO ignor /science-news, /RSS ?
-        url = re.sub("#.*", "", url)
-        url = re.sub("\?.*", "", url)
-        url = re.sub("<bound method.*", "", url)
-        url = re.sub("/RSS.*", "", url)
+        for subre in SUBRES:
+            url = re.sub(subre, "", url)
         return url
         
     def _get_urls(self, html, base_href): # UNUSED?
@@ -181,12 +184,13 @@ class Walker(object):
         while self.origin_urls_todo:
             lv = len(self.origin_urls_visited)
             lt = len(self.origin_urls_todo)
-            origin_url = self.origin_urls_todo.pop(0)
             logging.info("visited=%s todo=%s %03s%% try url=%s" % (
                     lv, lt,
                     int(100.0 * lv / (lv + lt)),
                     origin_url))
             self.origin_urls_visited.append(origin_url)
+                    lv, lt, int(100.0 * lv / (lv + lt)), origin_url))
+            self.origin_urls_visited.add(origin_url)
             try:
                 origin_response = self._fetch_url(origin_url)
             except (urllib2.URLError, httplib.BadStatusLine), e:
@@ -210,7 +214,6 @@ class Walker(object):
                             logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
                         elif url not in self.origin_urls_todo and url not in self.origin_urls_visited:
                             logging.debug("adding URL=%s" % url)
-                            self.origin_urls_todo.append(url)
                 target_url = self._get_target_url(origin_url)
                 logging.debug("about to fetch target_url=%s" % target_url)
                 try:
