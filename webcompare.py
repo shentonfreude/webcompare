@@ -9,12 +9,14 @@ from difflib import SequenceMatcher
 from optparse import OptionParser
 import json
 import sys
-from pprint import pprint as pp
+import os
+import re                       # "now you've got *two* problems"
 
 # We've got some URLs like in Glossary that add no value but hugely inflate the search space.
 # This should probably be handled with command line options.
 # It might need to (d)evolve to use regexps but this is faster for now.
 # Make this downcase so we don't have to do it ourselves.
+# OBE normalize_urls where we just nuke any ?querystring and #fragment.
 
 IGNORE_URLS_CONTAINING = ( "?searchterm=",
                            "?searchabletext=",
@@ -85,6 +87,7 @@ class Walker(object):
         self.target_url_parts = urlparse(target_url_base)
         self.comparators = []
         self.results = []
+        # Perhaps these should be Sets so I don't inadvertantly repeat
         self.origin_urls_todo = [self.origin_url_base]
         self.origin_urls_visited = []
 
@@ -115,11 +118,24 @@ class Walker(object):
         return url.startswith(self.origin_url_base)
 
     def _ignore_url(self, url):
+        """OBE normalize_url()"""
         for ignore in IGNORE_URLS_CONTAINING:
             if ignore in url.lower():
                 return True
         return False
     
+    def _normalize_url(self, url):
+        """Urls with searches, query strings, and fragments just bloat us.
+        Return normalized form which can then be check with the already done list.
+        I know: I should pre-compile these.
+        """
+        # TODO ignor /science-news, /RSS ?
+        url = re.sub("#.*", "", url)
+        url = re.sub("\?.*", "", url)
+        url = re.sub("<bound method.*", "", url)
+        url = re.sub("/RSS.*", "", url)
+        return url
+        
     def _get_urls(self, html, base_href): # UNUSED?
         """Return list of objects representing absolute URLs found in the html.
         [(element, attr, link, pos) ...]
@@ -163,66 +179,62 @@ class Walker(object):
         TODO: remove unneeded testing and logging, clean up if/else/continue
         """
         while self.origin_urls_todo:
+            lv = len(self.origin_urls_visited)
+            lt = len(self.origin_urls_todo)
             origin_url = self.origin_urls_todo.pop(0)
-            logging.info("visited=%s todo=%s try url=%s" % (
-                    len(self.origin_urls_visited),
-                    len(self.origin_urls_todo),
+            logging.info("visited=%s todo=%s %03s%% try url=%s" % (
+                    lv, lt,
+                    int(100.0 * lv / (lv + lt)),
                     origin_url))
-            if origin_url in self.origin_urls_visited:
-                logging.debug("Skip already visited target_url=%s" % origin_url)
+            self.origin_urls_visited.append(origin_url)
+            try:
+                origin_response = self._fetch_url(origin_url)
+            except (urllib2.URLError, httplib.BadStatusLine), e:
+                logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
+                result = Result(origin_url, getattr(e, 'code', 0)) # no HTTP code if DNS not found
+                self.results.append(result)
+                logging.info("result(err resp): %s" % result)
+                continue
+            if origin_response.code != 200: # TODO: do I need this check?
+                logging.warning("No success code=%s finding origin_url=%s" % (
+                        origin_response.code, origin_url))
+                result = Result(origin_url, origin_response.code)
+                self.results.append(result)
+                logging.info("result(err code): %s" % result)
                 continue
             else:
-                self.origin_urls_visited.append(origin_url)
+                if origin_response.content_type.startswith("text/html"):
+                    for url_obj in origin_response.htmltree.iterlinks():
+                        url = self._normalize_url(url_obj[2])
+                        if not self._is_within_origin(url):
+                            logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
+                        elif url not in self.origin_urls_todo and url not in self.origin_urls_visited:
+                            logging.debug("adding URL=%s" % url)
+                            self.origin_urls_todo.append(url)
+                target_url = self._get_target_url(origin_url)
+                logging.debug("about to fetch target_url=%s" % target_url)
                 try:
-                    origin_response = self._fetch_url(origin_url)
-                except (urllib2.URLError, httplib.BadStatusLine), e:
-                    logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
-                    result = Result(origin_url, getattr(e, 'code', 0)) # no HTTP code if DNS not found
-                    self.results.append(result)
-                    logging.info("result(err resp): %s" % result)
-                    continue
-                if origin_response.code != 200: # TODO: do I need this check?
-                    logging.warning("No success code=%s finding origin_url=%s" % (
-                            origin_response.code, origin_url))
-                    result = Result(origin_url, origin_response.code)
-                    self.results.append(result)
-                    logging.info("result(err code): %s" % result)
-                    continue
-                else:
-                    if origin_response.content_type.startswith("text/html"):
-                        for url_obj in origin_response.htmltree.iterlinks():
-                            url = url_obj[2]
-                            if not self._is_within_origin(url):
-                                logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
-                            elif self._ignore_url(url):
-                                logging.info("Skip ignorable url=%s" % url)
-                            elif url not in self.origin_urls_todo:
-                                logging.debug("adding URL=%s" % url)
-                                self.origin_urls_todo.append(url)
-                    target_url = self._get_target_url(origin_url)
-                    logging.debug("about to fetch target_url=%s" % target_url)
-                    try:
-                        target_response = self._fetch_url(target_url)
-                    except urllib2.URLError, e:
-                        logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
-                        result = Result(origin_url, origin_response.code,
-                                        target_url=target_url, target_response_code=e.code)
-                        self.results.append(result)
-                        logging.info("result(err targ): %s" % result)
-                        continue
-                    comparisons = {}
-                    if origin_response.htmltree == None or target_response.htmltree == None:
-                        logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
-                                origin_response.htmltree, target_response.htmltree))
-                    else:
-                        for comparator in self.comparators:
-                            proximity = comparator.compare(origin_response, target_response)
-                            comparisons[comparator.__class__.__name__] = proximity
+                    target_response = self._fetch_url(target_url)
+                except urllib2.URLError, e:
+                    logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
                     result = Result(origin_url, origin_response.code,
-                                    target_url=target_url, target_response_code=target_response.code,
-                                    comparisons=comparisons)
+                                    target_url=target_url, target_response_code=e.code)
                     self.results.append(result)
-                    logging.info("result(OK  targ): %s" % result)
+                    logging.info("result(err targ): %s" % result)
+                    continue
+                comparisons = {}
+                if origin_response.htmltree == None or target_response.htmltree == None:
+                    logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
+                            origin_response.htmltree, target_response.htmltree))
+                else:
+                    for comparator in self.comparators:
+                        proximity = comparator.compare(origin_response, target_response)
+                        comparisons[comparator.__class__.__name__] = proximity
+                result = Result(origin_url, origin_response.code,
+                                target_url=target_url, target_response_code=target_response.code,
+                                comparisons=comparisons)
+                self.results.append(result)
+                logging.info("result(OK  targ): %s" % result)
 
                     
 
@@ -332,17 +344,16 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
+    # Open output file early so we detect problems before our long walk
+    if options.filename:
+        f = open(os.path.expanduser(options.filename), "w")
+    else:
+        f = sys.stdout
     w = Walker(args[0], args[1])
     w.add_comparator(LengthComparator())
     w.add_comparator(TitleComparator())
     w.add_comparator(BodyComparator())
     w.add_comparator(ContentComparator())
     w.walk_and_compare()
-    if options.filename:
-        f = open(options.filename, "w")
-        ftmp = open(options.filename + ".tmp", "w")
-    else:
-        f = sys.stdout
-        ftmp = open("/dev/null", "w") # likely to fail on WinDoze (but what doesn't?)
     f.write(w.json_results())
     f.close()

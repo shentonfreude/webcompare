@@ -70,20 +70,29 @@ class TestNormalizer(unittest.TestCase):
 class TestComparator(unittest.TestCase):
 
     def setUp(self):
-        pass
+        from webcompare import Comparator
+        self.comparator = Comparator()
 
     def test___init__perfect(self):
-        from webcompare import Comparator
-        comparator = Comparator()
-        # TBD fix tests
-        self.assertEquals(comparator.compare(), comparator.match_perfect)
+        self.assertRaises(RuntimeError, self.comparator.compare, "orig", "targ")
 
-    def test___init__nothing(self):
-        from webcompare import Comparator
-        comparator = Comparator()
-        # TBD fix tests
-        self.assertEquals(comparator.compare(), comparator.match_nothing)
+    def test_collapse_whitespace(self):
+        self.assertEquals(self.comparator.collapse_whitespace("  foo   bar  "), "foo bar")
+        
+    def test_fuzziness(self):
+        self.assertEquals(self.comparator.fuzziness("foo", "foo"), 100)
+        self.assertEquals(self.comparator.fuzziness("foo", "foo "), 100)
+        self.assertEquals(self.comparator.fuzziness("foo", "Foo"), 100)
+        self.assertEquals(self.comparator.fuzziness("foo", "fool"), 85)
+        
+    def test_unfraction(self):
+        self.assertEquals(self.comparator.unfraction(1.0), 100)
+        self.assertEquals(self.comparator.unfraction(1), 100)
+        self.assertEquals(self.comparator.unfraction(0.0), 0)
+        self.assertEquals(self.comparator.unfraction(0), 0)
+        self.assertEquals(self.comparator.unfraction(1.0/3.0), 33)
 
+        
 class TestResult(unittest.TestCase):
 
     def setUp(self):
@@ -96,8 +105,9 @@ class TestResult(unittest.TestCase):
         self.assertEquals(r.origin_response_code, 666)
         self.assertEquals(r.target_url, None)
         self.assertEquals(r.target_response_code, None)
-        self.assertEquals(r.comparisons, [])
-        self.assertEquals(r.__repr__(), "<Result o=originurl oc=666 t=None tc=None comp=[]>")
+        self.assertEquals(r.comparisons, {})
+        # this will prolly fail since dicts are unordered, but I'm not convinced __repr__ is the way to output this anyway so don't change yet
+        self.assertEquals(r.__repr__(), {'comparisons': {}, 'origin_url': 'originurl', 'target_url': None, 'origin_response_code': 666, 'target_response_code': None})
 
     def test___init__target(self):
         r = self.Result("originurl", 666, "targeturl", 777)
@@ -105,8 +115,8 @@ class TestResult(unittest.TestCase):
         self.assertEquals(r.origin_response_code, 666)
         self.assertEquals(r.target_url, "targeturl")
         self.assertEquals(r.target_response_code, 777)
-        self.assertEquals(r.comparisons, [])
-        self.assertEquals(r.__repr__(), "<Result o=originurl oc=666 t=targeturl tc=777 comp=[]>")
+        self.assertEquals(r.comparisons, {})
+        self.assertEquals(r.__repr__(), {'comparisons': {}, 'origin_url': 'originurl', 'target_url': 'targeturl', 'origin_response_code': 666, 'target_response_code': 777})
 
     def test___init__comparisons(self):
         r = self.Result("originurl", 666, "targeturl", 777, [1,2,3])
@@ -129,9 +139,18 @@ class TestResponse(unittest.TestCase):
         self.assertNotEqual(r.htmltree, None)
         
                         
-                          
+class TestUrlManglers(unittest.TestCase):
+    def SetUp(self):
+        pass
+    def test_normalize_url(self):
+        from webcompare import Walker
+        w = Walker("ignore", "ignore")
+        self.assertEquals(w._normalize_url("http://example.com?querystring"), "http://example.com")
+        self.assertEquals(w._normalize_url("http://example.com#fragment"), "http://example.com")
+        self.assertEquals(w._normalize_url("http://example.com/something"), "http://example.com/something")
+        self.assertEquals(w._normalize_url("http://example.com/<bound method Application.absolute_url of <Application at >>"), "http://example.com/")
+        self.assertEquals(w._normalize_url("http://example.com/something/RSS"), "http://example.com/something")
         
-
 if __name__ == '__main__':
     unittest.main()
 
