@@ -12,22 +12,15 @@ import sys
 import os
 import re                       # "now you've got *two* problems"
 
-# We've got some URLs like in Glossary that add no value but hugely inflate the search space.
-# This should probably be handled with command line options.
-# It might need to (d)evolve to use regexps but this is faster for now.
-# Make this downcase so we don't have to do it ourselves.
-# OBE normalize_urls where we just nuke any ?querystring and #fragment.
+# normalize_urls where we just nuke any ?querystring and #fragment, etc.
+# TODO ignor /science-news, /RSS ?
 
-IGNORE_URLS_CONTAINING = ( "?searchterm=",
-                           "?searchabletext=",
-                           )
-
-URL_SUBRE = [re.compile(subre) for subre in
-             ("\?.*",
-              "#.*",
-              "<bound method.*",
-              "/RSS*",
-              )]
+URL_SUB_RE = [re.compile(subre) for subre in (
+        "\?.*",
+        "#.*",
+        "<bound method.*",
+        "/RSS*",
+        )]
 
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
@@ -94,7 +87,8 @@ class Walker(object):
         self.target_url_parts = urlparse(target_url_base)
         self.comparators = []
         self.results = []
-        # Perhaps these should be Sets so I don't inadvertantly repeat
+        self.origin_urls_todo = [self.origin_url_base]
+        self.origin_urls_visited = []
 
     def _texas_ranger(self):
         return "I think our next place to search is where military and wannabe military types hang out."
@@ -122,20 +116,12 @@ class Walker(object):
         """
         return url.startswith(self.origin_url_base)
 
-    def _ignore_url(self, url):
-        """OBE normalize_url()"""
-        for ignore in IGNORE_URLS_CONTAINING:
-            if ignore in url.lower():
-                return True
-        return False
-    
     def _normalize_url(self, url):
         """Urls with searches, query strings, and fragments just bloat us.
         Return normalized form which can then be check with the already done list.
         I know: I should pre-compile these.
         """
-        # TODO ignor /science-news, /RSS ?
-        for subre in SUBRES:
+        for subre in URL_SUB_RE:
             url = re.sub(subre, "", url)
         return url
         
@@ -185,12 +171,9 @@ class Walker(object):
             lv = len(self.origin_urls_visited)
             lt = len(self.origin_urls_todo)
             logging.info("visited=%s todo=%s %03s%% try url=%s" % (
-                    lv, lt,
-                    int(100.0 * lv / (lv + lt)),
-                    origin_url))
+                    lv, lt, int(100.0 * lv / (lv + lt)), self.origin_urls_todo[0]))
+            origin_url = self.origin_urls_todo.pop(0)
             self.origin_urls_visited.append(origin_url)
-                    lv, lt, int(100.0 * lv / (lv + lt)), origin_url))
-            self.origin_urls_visited.add(origin_url)
             try:
                 origin_response = self._fetch_url(origin_url)
             except (urllib2.URLError, httplib.BadStatusLine), e:
@@ -214,6 +197,7 @@ class Walker(object):
                             logging.debug("Skip url=%s not within origin_url=%s" % (url, self.origin_url_base))
                         elif url not in self.origin_urls_todo and url not in self.origin_urls_visited:
                             logging.debug("adding URL=%s" % url)
+                            self.origin_urls_todo.append(url)
                 target_url = self._get_target_url(origin_url)
                 logging.debug("about to fetch target_url=%s" % target_url)
                 try:
