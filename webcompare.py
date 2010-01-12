@@ -11,6 +11,7 @@ import json
 import sys
 import os
 import re                       # "now you've got *two* problems"
+from collections import defaultdict
 
 # normalize_urls where we just nuke any ?querystring and #fragment, etc.
 # TODO ignor /science-news, /RSS ?
@@ -34,16 +35,29 @@ class Result(object):
         self.target_response_code = target_response_code
         self.comparisons = comparisons
 
-    def __repr__(self):
-        return dict(origin_url=self.origin_url, origin_response_code=self.origin_response_code,
-                    target_url=self.target_url, target_response_code=self.target_response_code,
-                    comparisons=self.comparisons)
+    # def __repr__(self):
+    #     return dict(origin_url=self.origin_url, origin_response_code=self.origin_response_code,
+    #                 target_url=self.target_url, target_response_code=self.target_response_code,
+    #                 comparisons=self.comparisons)
 
     def __str__(self):
-        return "<Result o=%s oc=%s t=%s tc=%s comp=%s>" % (
+        return "<%s o=%s oc=%s t=%s tc=%s comp=%s>" % (
+            self.__class__.__name__,
             self.origin_url, self.origin_response_code,
             self.target_url, self.target_response_code,
             self.comparisons)
+
+class ErrorResult(Result):
+    pass
+
+class BadOriginResult(Result):
+    pass
+
+class BadTargetResult(Result):
+    pass
+
+class GoodResult(Result):
+    pass
 
 
 class Response(object):
@@ -154,12 +168,32 @@ class Walker(object):
                     target_url=r.target_url, target_response_code=r.target_response_code,
                     comparisons=r.comparisons)
     
-    def json_results(self):
+    def json_results_combined(self):
         """Return the JSON representation.
         Hopefully will allow clever JS tricks to render and sort in browser.
         """
         d = [self.jsonify(r) for r in self.results]
         return json.dumps(d, sort_keys=True, indent=4)
+    
+    def json_results(self):
+        """Return the JSON representation, grouped by result type.
+        Hopefully will allow clever JS tricks to render and sort in browser.
+        """
+        result_objs = defaultdict(list)
+        for r in self.results:
+            result_objs[r.__class__.__name__].append(r.__dict__)
+        #stats = dict(stats=dict([(k, len(result_objs[k])) for k in result_objs.keys()])) # my eyes are bleedin'
+        stats=dict([(k, len(result_objs[k])) for k in result_objs.keys()]) # my eyes are bleedin'
+        all_results = dict(results=dict(resulttypes=dict(result_objs),
+                                        stats=stats),
+                           )
+        import pdb; pdb.set_trace()
+        try:
+            json_results = json.dumps(all_results, sort_keys=True, indent=4)
+        except Exception, e:
+            print "ERROR converting to JSON, help me:", e
+            import pdb; pdb.set_trace()
+        return json_results
     
     def walk_and_compare(self):
         """Start at origin_url, generate target urls, run comparators, return dict of results.
@@ -178,14 +212,14 @@ class Walker(object):
                 origin_response = self._fetch_url(origin_url)
             except (urllib2.URLError, httplib.BadStatusLine), e:
                 logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
-                result = Result(origin_url, getattr(e, 'code', 0)) # no HTTP code if DNS not found
+                result = ErrorResult(origin_url, getattr(e, 'code', 0)) # no HTTP code if DNS not found
                 self.results.append(result)
                 logging.info("result(err resp): %s" % result)
                 continue
             if origin_response.code != 200: # TODO: do I need this check?
                 logging.warning("No success code=%s finding origin_url=%s" % (
                         origin_response.code, origin_url))
-                result = Result(origin_url, origin_response.code)
+                result = BadOriginResult(origin_url, origin_response.code)
                 self.results.append(result)
                 logging.info("result(err code): %s" % result)
                 continue
@@ -204,8 +238,8 @@ class Walker(object):
                     target_response = self._fetch_url(target_url)
                 except urllib2.URLError, e:
                     logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
-                    result = Result(origin_url, origin_response.code,
-                                    target_url=target_url, target_response_code=e.code)
+                    result = BadTargetResult(origin_url, origin_response.code,
+                                             target_url=target_url, target_response_code=e.code)
                     self.results.append(result)
                     logging.info("result(err targ): %s" % result)
                     continue
@@ -217,7 +251,7 @@ class Walker(object):
                     for comparator in self.comparators:
                         proximity = comparator.compare(origin_response, target_response)
                         comparisons[comparator.__class__.__name__] = proximity
-                result = Result(origin_url, origin_response.code,
+                result = GoodResult(origin_url, origin_response.code,
                                 target_url=target_url, target_response_code=target_response.code,
                                 comparisons=comparisons)
                 self.results.append(result)
