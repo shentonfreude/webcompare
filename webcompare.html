@@ -94,7 +94,8 @@ YAHOO.util.Event.addListener(window, "load", function() {
         myDataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
         myDataSource.connXhrMode = "queueRequests";
 
-        myDataSource.responseSchema = {
+        var goodResults = myDataSource;
+        goodResults.responseSchema = {
             resultsList: "results.resulttypes.GoodResult",
             fields: ["origin_url", "target_url", "origin_response_code", "target_response_code",
                      {key:"comparisons.BodyComparator",    parser:"number"},
@@ -103,18 +104,7 @@ YAHOO.util.Event.addListener(window, "load", function() {
 		     {key:"comparisons.TitleComparator",   parser:"number"}
                     ]
         };
-        var myDataTable = new YAHOO.widget.DataTable("goodresult", myColumnDefs, myDataSource);
-
-        badTargetSource.responseSchema = {
-            resultsList: "results.resulttypes.BadTargetResult",
-            fields: ["origin_url", "target_url", "origin_response_code", "target_response_code",
-                     {key:"comparisons.BodyComparator",    parser:"number"},
-		     {key:"comparisons.ContentComparator", parser:"number"},
-		     {key:"comparisons.LengthComparator",  parser:"number"},
-		     {key:"comparisons.TitleComparator",   parser:"number"}
-                    ]
-        };
-        var badTargetTable = new YAHOO.widget.DataTable("badtargetresult", myColumnDefs, badTargetSource);
+        var goodTable = new YAHOO.widget.DataTable("goodresult", myColumnDefs, goodResults);
 
         var mySuccessHandler = function() {
             this.set("sortedBy", null);
@@ -134,8 +124,8 @@ YAHOO.util.Event.addListener(window, "load", function() {
         };
                 
         return {
-            oDS: myDataSource,
-            oDT: myDataTable
+            oDS: goodResults,
+            oDT: goodTable
         };
     }();
 });
