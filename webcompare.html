@@ -48,19 +48,22 @@ body {
   <a href="#errorresult">Error</a>
 </p>
 
-<h2>GoodResult</h2> 
 <a name="goodresult">
-  <div id="goodresult">GOOD TARGET RESULTS...</div> 
+  <h2>GoodResult</h2> 
 </a>
-<h2>BadTargetResult</h2> 
+<div id="goodresult">GOOD TARGET RESULTS...</div> 
+
 <a name="badtargetresult">
-  <div id="badtargetresult">BAD TARGET RESULTS...</div>
+  <h2>BadTargetResult</h2> 
 </a>
-<h2>ErrorResult</h2> 
-<a name="badtargetresult">
-  <div id="badtargetresult">BAD TARGET RESULTS...</div>
+<div id="badtargetresult">BAD TARGET RESULTS...</div>
+
+<a name="errorresult">
+  <h2>ErrorResult</h2>
 </a>
+<div id="errorresult">BAD TARGET RESULTS...</div>
  
+
 <script type="text/javascript"> 
 new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
 
@@ -90,43 +93,38 @@ YAHOO.util.Event.addListener(window, "load", function() {
             {key:"origin_url",                    label:"URL Path",    sortable:true, formatter:formatUrlPath},
         ];
  
-        var myDataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare-stats.json");
-        myDataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
-        myDataSource.connXhrMode = "queueRequests";
+        var dataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare-stats.json");
+        dataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
+        dataSource.connXhrMode = "queueRequests";
 
-        var goodResults = myDataSource;
-        goodResults.responseSchema = {
-            resultsList: "results.resulttypes.GoodResult",
-            fields: ["origin_url", "target_url", "origin_response_code", "target_response_code",
+        var fields = ["origin_url", "target_url", "origin_response_code", "target_response_code",
                      {key:"comparisons.BodyComparator",    parser:"number"},
 		     {key:"comparisons.ContentComparator", parser:"number"},
 		     {key:"comparisons.LengthComparator",  parser:"number"},
 		     {key:"comparisons.TitleComparator",   parser:"number"}
-                    ]
+                    ];
+
+        var goodResults = dataSource;
+        goodResults.responseSchema = {
+            resultsList: "results.resulttypes.GoodResult",
+            fields: fields
         };
         var goodTable = new YAHOO.widget.DataTable("goodresult", myColumnDefs, goodResults);
 
-        var mySuccessHandler = function() {
-            this.set("sortedBy", null);
-            this.onDataReturnAppendRows.apply(this,arguments);
+        var badTargetResults = dataSource;
+        badTargetResults.responseSchema = {
+            resultsList: "results.resulttypes.BadTargetResult",
+            fields: fields
         };
+        var badTargetTable = new YAHOO.widget.DataTable("badtargetresult", myColumnDefs, badTargetResults);
 
-        var myFailureHandler = function() {
-            alert("FailureHandler invoked");
-            this.showTableMessage(YAHOO.widget.DataTable.MSG_ERROR, YAHOO.widget.DataTable.CLASS_ERROR);
-            this.onDataReturnAppendRows.apply(this,arguments);
+        var errorResults = dataSource;
+        errorResults.responseSchema = {
+            resultsList: "results.resulttypes.ErrorResult",
+            fields: fields
         };
+        var errortTable = new YAHOO.widget.DataTable("errorresult", myColumnDefs, errorResults);
 
-        var callbackObj = {
-            success : mySuccessHandler,
-            failure : myFailureHandler,
-            scope : myDataTable
-        };
-                
-        return {
-            oDS: goodResults,
-            oDT: goodTable
-        };
     }();
 });
 </script> 
