@@ -160,21 +160,6 @@ class Walker(object):
         """
         self.comparators.append(comparator_function)
 
-        
-    def jsonify(self, r):
-        """Return the JSON representation of a single result.
-        """
-        return dict(origin_url=r.origin_url, origin_response_code=r.origin_response_code,
-                    target_url=r.target_url, target_response_code=r.target_response_code,
-                    comparisons=r.comparisons)
-    
-    def json_results_combined(self):
-        """Return the JSON representation.
-        Hopefully will allow clever JS tricks to render and sort in browser.
-        """
-        d = [self.jsonify(r) for r in self.results]
-        return json.dumps(d, sort_keys=True, indent=4)
-    
     def json_results(self):
         """Return the JSON representation, grouped by result type.
         Hopefully will allow clever JS tricks to render and sort in browser.
@@ -182,12 +167,8 @@ class Walker(object):
         result_objs = defaultdict(list)
         for r in self.results:
             result_objs[r.__class__.__name__].append(r.__dict__)
-        #stats = dict(stats=dict([(k, len(result_objs[k])) for k in result_objs.keys()])) # my eyes are bleedin'
         stats=dict([(k, len(result_objs[k])) for k in result_objs.keys()]) # my eyes are bleedin'
-        all_results = dict(results=dict(resulttypes=dict(result_objs),
-                                        stats=stats),
-                           )
-        import pdb; pdb.set_trace()
+        all_results = dict(results=dict(resulttypes=dict(result_objs), stats=stats))
         try:
             json_results = json.dumps(all_results, sort_keys=True, indent=4)
         except Exception, e:
