@@ -11,11 +11,14 @@ import json
 import sys
 import os
 import re                       # "now you've got *two* problems"
-from collections import defaultdict
 import time
 
 # normalize_urls where we just nuke any ?querystring and #fragment, etc.
-# TODO ignor /science-news, /RSS ?
+# TODO
+# * ignor /science-news, /RSS ?
+# * command line options: --ignore-re "regex" --ignores-file ignore-res.txt
+
+
 
 URL_SUB_RE = [re.compile(subre) for subre in (
         "\?.*",
