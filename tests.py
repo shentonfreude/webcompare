@@ -96,31 +96,60 @@ class TestComparator(unittest.TestCase):
 class TestResult(unittest.TestCase):
 
     def setUp(self):
-        from webcompare import Result
-        self.Result = Result
+        from webcompare import Result, ErrorResult, BadOriginResult, BadTargetResult, GoodResult
+        self.Result          = Result
+        self.ErrorResult     = ErrorResult
+        self.BadOriginResult = BadOriginResult
+        self.BadTargetResult = BadTargetResult
+        self.GoodResult      = GoodResult
 
     def test___init__origin(self):
-        r = self.Result("originurl", 666)
+        r = self.Result("originurl", 666, origin_time=42.0)
+        self.assertEquals(r.result_type, "Result")
         self.assertEquals(r.origin_url, "originurl")
-        self.assertEquals(r.origin_response_code, 666)
+        self.assertEquals(r.origin_code, 666)
+        self.assertEquals(r.origin_time, 42.0)
         self.assertEquals(r.target_url, None)
-        self.assertEquals(r.target_response_code, None)
+        self.assertEquals(r.target_code, None)
         self.assertEquals(r.comparisons, {})
-        # this will prolly fail since dicts are unordered, but I'm not convinced __repr__ is the way to output this anyway so don't change yet
-        self.assertEquals(r.__repr__(), {'comparisons': {}, 'origin_url': 'originurl', 'target_url': None, 'origin_response_code': 666, 'target_response_code': None})
+        self.assertTrue("comp={}" in r.__str__())
 
     def test___init__target(self):
-        r = self.Result("originurl", 666, "targeturl", 777)
-        self.assertEquals(r.origin_url, "originurl")
-        self.assertEquals(r.origin_response_code, 666)
+        r = self.Result("originurl", 666, target_url="targeturl", target_code=777, target_time=42.0)
         self.assertEquals(r.target_url, "targeturl")
-        self.assertEquals(r.target_response_code, 777)
+        self.assertEquals(r.target_code, 777)
+        self.assertEquals(r.target_time, 42.0)
         self.assertEquals(r.comparisons, {})
-        self.assertEquals(r.__repr__(), {'comparisons': {}, 'origin_url': 'originurl', 'target_url': 'targeturl', 'origin_response_code': 666, 'target_response_code': 777})
+        self.assertTrue("comp={}" in r.__str__())
 
     def test___init__comparisons(self):
-        r = self.Result("originurl", 666, "targeturl", 777, [1,2,3])
-        self.assertEquals(r.comparisons, [1,2,3])
+        r = self.Result("originurl", 666, target_url="targeturl", target_code=777, comparisons={'fee': 42, 'fi':666, 'foo':0xDeadBeef})
+        self.assertEquals(r.comparisons, {'fee': 42, 'fi':666, 'foo':0xDeadBeef})
+
+    def test_subclasses(self):
+        r = self.ErrorResult("originurl", 666)
+        self.assertEquals(r.result_type, "ErrorResult")
+        r = self.BadOriginResult("origin", 666)
+        self.assertEquals(r.result_type, "BadOriginResult")
+        r = self.BadTargetResult("origin", 666)
+        self.assertEquals(r.result_type, "BadTargetResult")
+        r = self.GoodResult("origin", 666)
+        self.assertEquals(r.result_type, "GoodResult")
+        
+            
+class TestWalkerJsonResults(unittest.TestCase):
+    def setup(self):
+        pass
+
+    def test_json_results(self):
+        from webcompare import Walker     
+        from webcompare import ErrorResult, BadOriginResult, BadTargetResult, GoodResult
+        walker = Walker("origin", "target")
+        walker.results.extend([ErrorResult("error", 1), BadOriginResult("origin", 2),
+                                BadTargetResult("target", 3), GoodResult("good", 4)])
+        j = walker.json_results()
+
+        
 
 class TestResponse(unittest.TestCase):
     def setUp(self):

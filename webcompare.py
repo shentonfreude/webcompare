@@ -12,6 +12,7 @@ import sys
 import os
 import re                       # "now you've got *two* problems"
 from collections import defaultdict
+import time
 
 # normalize_urls where we just nuke any ?querystring and #fragment, etc.
 # TODO ignor /science-news, /RSS ?
@@ -26,25 +27,41 @@ URL_SUB_RE = [re.compile(subre) for subre in (
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
     """
-    def __init__(self, origin_url, origin_response_code,
-                 target_url=None, target_response_code=None,
+    def __init__(self,
+                 origin_url,      origin_code,      origin_time=None,
+                 target_url=None, target_code=None, target_time=None,
                  comparisons={}):
-        self.origin_url = origin_url
-        self.origin_response_code = origin_response_code
-        self.target_url = target_url
-        self.target_response_code = target_response_code
+        self.result_type = self.__class__.__name__
+        self.origin_url  = origin_url
+        self.origin_code = int(origin_code)
+        self.origin_time = origin_time
+        self.target_url  = target_url
+        self.target_code = target_code
+        self.target_time = target_time
         self.comparisons = comparisons
-
-    # def __repr__(self):
-    #     return dict(origin_url=self.origin_url, origin_response_code=self.origin_response_code,
-    #                 target_url=self.target_url, target_response_code=self.target_response_code,
-    #                 comparisons=self.comparisons)
-
+        if not hasattr(self.result_type, "lower"):
+            raise TypeError, "result_type must be a string"
+        if not hasattr(self.origin_url, "lower"):
+            raise TypeError, "origin_url must be a string"
+        if self.origin_code != None and type(self.origin_code) != int:
+            raise TypeError, "origin_code=%s must be a int" % self.origin_code
+        if self.origin_time != None and type(self.origin_time) != float:
+            raise TypeError, "origin_time=%s must be a float" % self.origin_time
+        if self.target_url != None and not hasattr(self.target_url, "lower"):
+            raise TypeError, "target_url=%s must be a string" % self.target_url
+        if self.target_code != None and type(self.target_code) != int:
+            raise TypeError, "target_code=%s must be a int" % self.target_code
+        if (self.target_time != None and type(self.target_time) != float):
+            raise TypeError, "target_time=%s must be a float" % self.target_time
+        if not hasattr(self.comparisons, "keys"):
+            raise TypeError, "comparisons=%s must be a dict" % self.comparisons
+                               
+        
     def __str__(self):
         return "<%s o=%s oc=%s t=%s tc=%s comp=%s>" % (
-            self.__class__.__name__,
-            self.origin_url, self.origin_response_code,
-            self.target_url, self.target_response_code,
+            self.result_type,
+            self.origin_url, self.origin_code,
+            self.target_url, self.target_code,
             self.comparisons)
 
 class ErrorResult(Result):
@@ -161,19 +178,24 @@ class Walker(object):
         self.comparators.append(comparator_function)
 
     def json_results(self):
-        """Return the JSON representation, grouped by result type.
+        """Return the JSON representation of results and stats.
+        Add the result type to each result so JS can filter on them.
         Hopefully will allow clever JS tricks to render and sort in browser.
         """
-        result_objs = defaultdict(list)
+        #result_tally = defaultdict(list)
+        #for r in self.results:
+        #    result_tally[r.__class__.__name__].append(r.__dict__)
+        #stats=dict([(k, len(result_tally[k])) for k in result_tally.keys()]) # my eyes are bleedin'
+        stats = {}
         for r in self.results:
-            result_objs[r.__class__.__name__].append(r.__dict__)
-        stats=dict([(k, len(result_objs[k])) for k in result_objs.keys()]) # my eyes are bleedin'
-        all_results = dict(results=dict(resulttypes=dict(result_objs), stats=stats))
+            stats[r.result_type] = stats.get('result_type', 0) + 1
+        result_list = [r.__dict__ for r in self.results]
+        all_results = dict(results=dict(resultlist=result_list, stats=stats))
         try:
             json_results = json.dumps(all_results, sort_keys=True, indent=4)
         except Exception, e:
-            print "ERROR converting to JSON, help me:", e
             import pdb; pdb.set_trace()
+            logging.error("ERROR converting to JSON, help me:", e)
         return json_results
     
     def walk_and_compare(self):
@@ -190,19 +212,19 @@ class Walker(object):
             origin_url = self.origin_urls_todo.pop(0)
             self.origin_urls_visited.append(origin_url)
             try:
+                t = time.time()
                 origin_response = self._fetch_url(origin_url)
+                origin_time = time.time() - t
             except (urllib2.URLError, httplib.BadStatusLine), e:
                 logging.warning("Could not fetch origin_url=%s -- %s" % (origin_url, e))
                 result = ErrorResult(origin_url, getattr(e, 'code', 0)) # no HTTP code if DNS not found
                 self.results.append(result)
                 logging.info("result(err resp): %s" % result)
                 continue
-            if origin_response.code != 200: # TODO: do I need this check?
-                logging.warning("No success code=%s finding origin_url=%s" % (
-                        origin_response.code, origin_url))
+            if origin_response.code != 200: # TODO: do I need this check? or code block?
                 result = BadOriginResult(origin_url, origin_response.code)
                 self.results.append(result)
-                logging.info("result(err code): %s" % result)
+                logging.warning(result)
                 continue
             else:
                 if origin_response.content_type.startswith("text/html"):
@@ -216,13 +238,14 @@ class Walker(object):
                 target_url = self._get_target_url(origin_url)
                 logging.debug("about to fetch target_url=%s" % target_url)
                 try:
+                    t = time.time()
                     target_response = self._fetch_url(target_url)
+                    target_time = time.time() - t
                 except urllib2.URLError, e:
-                    logging.warning("Could not fetch target_url=%s -- %s" % (target_url, e))
-                    result = BadTargetResult(origin_url, origin_response.code,
-                                             target_url=target_url, target_response_code=e.code)
+                    result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
+                                             target_url=target_url, target_code=e.code)
                     self.results.append(result)
-                    logging.info("result(err targ): %s" % result)
+                    logging.warning(result)
                     continue
                 comparisons = {}
                 if origin_response.htmltree == None or target_response.htmltree == None:
@@ -232,11 +255,12 @@ class Walker(object):
                     for comparator in self.comparators:
                         proximity = comparator.compare(origin_response, target_response)
                         comparisons[comparator.__class__.__name__] = proximity
-                result = GoodResult(origin_url, origin_response.code,
-                                target_url=target_url, target_response_code=target_response.code,
-                                comparisons=comparisons)
+                result = GoodResult(origin_url, origin_response.code, origin_time=origin_time,
+                                    target_url=target_url, target_code=target_response.code,
+                                    target_time=target_time,
+                                    comparisons=comparisons)
                 self.results.append(result)
-                logging.info("result(OK  targ): %s" % result)
+                logging.info(result)
 
                     
 
