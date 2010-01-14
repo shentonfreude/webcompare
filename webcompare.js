@@ -36,9 +36,30 @@ YAHOO.util.Event.addListener(window, "load", function() {
             return res
         }
 
-        var dataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare.json");
-        //dataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
-        //dataSource.connXhrMode = "queueRequests";
+	var good = document.getElementById("GoodResult")
+	///
+	/// create dict with keys of good, etc, set to true
+	/// then in filter check whether ...result_type in resulttypedict
+
+
+        var dataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare-kids.json",
+						   {
+						       doBeforeCallback : function (req,raw,res,cb) {
+							   // This is the filter function
+							   var data     = res.results || [];
+							   var filtered = [];
+							   var i,l;
+							   for (i = 0, l = data.length; i < l; ++i) {
+							       if (data[i].result_type != "GoodResult") {
+								   filtered.push(data[i]);
+							       }
+							   }
+							   res.results = filtered;
+							   return res;
+						       }
+						   }
+						  );
+
         dataSource.responseSchema = {
             resultsList: "results.resultlist",
             fields: ["result_type", "origin_url", "target_url", "origin_code", "target_code", "origin_time", "target_time",
