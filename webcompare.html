@@ -4,7 +4,7 @@
  
  
     <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
-<title>JSON Data Over XHR</title> 
+<title>WebCompare Results Analyzer</title> 
  
 <style type="text/css"> 
 /*margin and padding on body element
@@ -39,12 +39,31 @@ body {
 </head> 
  
 <body class="yui-skin-sam"> 
+
+<h1>Result Sets</h1>
+<p>
+  <a href="#goodresult">Good</a>
+  <!-- isn't there a BadOriginResult ?? -->
+  <a href="#badtargetresult">Bad Target</a>
+  <a href="#errorresult">Error</a>
+</p>
+
+<a name="goodresult">
+  <h2>GoodResult</h2> 
+</a>
+<div id="goodresult">GOOD TARGET RESULTS...</div> 
+
+<a name="badtargetresult">
+  <h2>BadTargetResult</h2> 
+</a>
+<div id="badtargetresult">BAD TARGET RESULTS...</div>
+
+<a name="errorresult">
+  <h2>ErrorResult</h2>
+</a>
+<div id="errorresult">BAD TARGET RESULTS...</div>
  
- 
-<h1>JSON WebCompare Over XHR</h1> 
- 
-<div id="json"></div> 
- 
+
 <script type="text/javascript"> 
 new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
 
@@ -54,70 +73,58 @@ YAHOO.util.Event.addListener(window, "load", function() {
         var urlPath = function(url) {
             return url.replace(/http:\/\/[\w.]+/,'');
         };
-
         var formatUrlPath = function(elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = urlPath(sData);
         };
- 
         var formatOriginCode = function(elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = "<a href='" + oRecord.getData("origin_url") + "' target='_origin'>" + sData + "</a>";
         };
- 
         var formatTargetCode = function(elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = "<a href='" + oRecord.getData("target_url") + "' target='_target'>" + sData + "</a>";
         };
  
         var myColumnDefs = [
-            {key:"origin_url", label:"URL Path", sortable:true, formatter:formatUrlPath},
-            {key:"origin_response_code", label:"Origin Code", sortable:true, formatter:formatOriginCode},
-            {key:"target_response_code", label:"Target Code", sortable:true, formatter:formatTargetCode},
-            {key:"comparisons.BodyComparator", label:"Body", sortable:true},
-            {key:"comparisons.ContentComparator", label:"Content", sortable:true},
-            {key:"comparisons.LengthComparator", label:"Length", sortable:true},
-            {key:"comparisons.TitleComparator", label:"Title", sortable:true},
-
+            {key:"origin_response_code",          label:"Origin Code", sortable:true, formatter:formatOriginCode},
+            {key:"target_response_code",          label:"Target Code", sortable:true, formatter:formatTargetCode},
+            {key:"comparisons.BodyComparator",    label:"Body",        sortable:true},
+            {key:"comparisons.ContentComparator", label:"Content",     sortable:true},
+            {key:"comparisons.LengthComparator",  label:"Length",      sortable:true},
+            {key:"comparisons.TitleComparator",   label:"Title",       sortable:true},
+            {key:"origin_url",                    label:"URL Path",    sortable:true, formatter:formatUrlPath},
         ];
  
-        var myDataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare.json");
+        var dataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare-stats.json");
+        dataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
+        dataSource.connXhrMode = "queueRequests";
 
-        myDataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
-
-        myDataSource.connXhrMode = "queueRequests";
-
-        myDataSource.responseSchema = {
-            resultsList: "Results",
-            fields: ["origin_url", "target_url", "origin_response_code", "target_response_code",
-                     {key:"comparisons.BodyComparator", parser:"number"},
+        var fields = ["origin_url", "target_url", "origin_response_code", "target_response_code",
+                     {key:"comparisons.BodyComparator",    parser:"number"},
 		     {key:"comparisons.ContentComparator", parser:"number"},
-		     {key:"comparisons.LengthComparator", parser:"number"},
-		     {key:"comparisons.TitleComparator", parser:"number"}
-                
-                    ]
-        };
- 
-        var myDataTable = new YAHOO.widget.DataTable("json", myColumnDefs, myDataSource);
+		     {key:"comparisons.LengthComparator",  parser:"number"},
+		     {key:"comparisons.TitleComparator",   parser:"number"}
+                    ];
 
-        var mySuccessHandler = function() {
-            this.set("sortedBy", null);
-            this.onDataReturnAppendRows.apply(this,arguments);
+        var goodResults = dataSource;
+        goodResults.responseSchema = {
+            resultsList: "results.resulttypes.GoodResult",
+            fields: fields
         };
+        var goodTable = new YAHOO.widget.DataTable("goodresult", myColumnDefs, goodResults);
 
-        var myFailureHandler = function() {
-            alert("FailureHandler invoked");
-            this.showTableMessage(YAHOO.widget.DataTable.MSG_ERROR, YAHOO.widget.DataTable.CLASS_ERROR);
-            this.onDataReturnAppendRows.apply(this,arguments);
+        var badTargetResults = dataSource;
+        badTargetResults.responseSchema = {
+            resultsList: "results.resulttypes.BadTargetResult",
+            fields: fields
         };
+        var badTargetTable = new YAHOO.widget.DataTable("badtargetresult", myColumnDefs, badTargetResults);
 
-        var callbackObj = {
-            success : mySuccessHandler,
-            failure : myFailureHandler,
-            scope : myDataTable
+        var errorResults = dataSource;
+        errorResults.responseSchema = {
+            resultsList: "results.resulttypes.ErrorResult",
+            fields: fields
         };
-                
-        return {
-            oDS: myDataSource,
-            oDT: myDataTable
-        };
+        var errortTable = new YAHOO.widget.DataTable("errorresult", myColumnDefs, errorResults);
+
     }();
 });
 </script> 
