@@ -13,20 +13,6 @@ import os
 import re                       # "now you've got *two* problems"
 import time
 
-# normalize_urls where we just nuke any ?querystring and #fragment, etc.
-# TODO
-# * ignor /science-news, /RSS ?
-# * command line options: --ignore-re "regex" --ignores-file ignore-res.txt
-
-
-
-URL_SUB_RE = [re.compile(subre) for subre in (
-        "\?.*",
-        "#.*",
-        "<bound method.*",
-        "/RSS*",
-        )]
-
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
     """
@@ -155,7 +141,7 @@ class Walker(object):
         Return normalized form which can then be check with the already done list.
         I know: I should pre-compile these.
         """
-        for subre in URL_SUB_RE:
+        for subre in ignoreres:
             url = re.sub(subre, "", url)
         return url
         
@@ -366,6 +352,12 @@ if __name__ == "__main__":
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", help="log info about processing")
     parser.add_option("-f", "--file", dest="filename", help="path to store the json results to (default is stdout)")
+    parser.add_option("-i", "--ignorere", dest="ignorere", action="append", default=[],
+                      help="Ignore URLs matching this regular expression, can use multiple times")
+    parser.add_option("-I", "--ignorere-file", dest="ignorere_file", 
+                      help="File containtaining regexps specifying URLs to ignore, one per line")
+
+    ignoreres = []
     (options, args) = parser.parse_args()
     if len(args) != 2:
         parser.error("Must specify origin and target urls")
@@ -373,6 +365,15 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
+    if options.ignorere:
+        ignoreres.extend(options.ignorere)
+    if options.ignorere_file:
+        file_ignores = open(os.path.expanduser(options.ignorere_file)).readlines()
+        file_ignores = [regex.rstrip('\n') for regex in file_ignores]
+        logging.warning("ignores from file: %s" % file_ignores)
+        ignoreres.extend(file_ignores)
+    logging.warning("all ignores: %s" % ignoreres)
+    ignoreres = [re.compile(subre) for subre in ignoreres]
     # Open output file early so we detect problems before our long walk
     if options.filename:
         f = open(os.path.expanduser(options.filename), "w")
