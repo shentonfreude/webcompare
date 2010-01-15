@@ -31,22 +31,27 @@
        http://developer.yahoo.com/yui/articles/hosting/?datasource&datatable&logger&DEBUG&norollup 
        http://developer.yahoo.com/yui/articles/hosting/?datasource&datatable&dragdrop&logger&DEBUG&norollup
       -->
-    <!-- Combo-handled YUI CSS files: -->
+
+    <!-- Combo-handled YUI CSS files: 
     <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.8.0r4/build/datatable/assets/skins/sam/datatable.css&2.8.0r4/build/logger/assets/skins/sam/logger.css">
-    <!-- Combo-handled YUI JS files: -->
+    -->
+    <!-- Combo-handled YUI JS files: 
     <script type="text/javascript" src="http://yui.yahooapis.com/combo?2.8.0r4/build/yahoo/yahoo-debug.js&2.8.0r4/build/event/event-debug.js&2.8.0r4/build/datasource/datasource-debug.js&2.8.0r4/build/dom/dom-debug.js&2.8.0r4/build/dragdrop/dragdrop-debug.js&2.8.0r4/build/element/element-debug.js&2.8.0r4/build/datatable/datatable-debug.js&2.8.0r4/build/logger/logger-debug.js"></script>
-    
+    -->
+
   </head> 
   
   <body class="yui-skin-sam"> 
 
     <h1>Result Sets</h1>
 
-    <input type="checkbox" id="GoodResult" value="Goody">good</input>
-    <input type="checkbox" id="BadOriginResult" value="bad origin">badOrigin</input>
-    <input type="checkbox" id="BadTargetResult" value="bad target">badTarget</input>
-    <input type="checkbox" id="Something" value="something">somthing</input>
-    
+    <p>
+      <input type="checkbox" id="GoodResult"="Goody" checked="true">Good</input>
+      <input type="checkbox" id="ErrorResult"="Goody">Error</input>
+      <input type="checkbox" id="BadOriginResult">Bad Origin</input>
+      <input type="checkbox" id="BadTargetResult">Bad Target</input>
+      <input type="submit" id="filter" value="Filter!"></input>
+    </p>
 
     <div id="resultlist"> Result List should go here </div> 
     
