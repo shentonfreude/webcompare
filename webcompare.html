@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> 
+<html> 
+<head> 
+ 
+ 
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+<title>WebCompare Results Analyzer</title> 
+ 
+<style type="text/css"> 
+/*margin and padding on body element
+  can introduce errors in determining
+  element position and are not recommended;
+  we turn them off as a foundation for YUI
+  CSS treatments. */
+body {
+	margin:0;
+	padding:0;
+}
+</style> 
+ 
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.8.0r4/build/fonts/fonts-min.css" /> 
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.8.0r4/build/datatable/assets/skins/sam/datatable.css" /> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.8.0r4/build/yahoo-dom-event/yahoo-dom-event.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.8.0r4/build/connection/connection-min.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.8.0r4/build/json/json-min.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.8.0r4/build/element/element-min.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.8.0r4/build/datasource/datasource-min.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.8.0r4/build/datatable/datatable-min.js"></script> 
+
+<!--
+   http://developer.yahoo.com/yui/articles/hosting/?datasource&datatable&logger&DEBUG&norollup 
+   http://developer.yahoo.com/yui/articles/hosting/?datasource&datatable&dragdrop&logger&DEBUG&norollup
+-->
+<!-- Combo-handled YUI CSS files: -->
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.8.0r4/build/datatable/assets/skins/sam/datatable.css&2.8.0r4/build/logger/assets/skins/sam/logger.css">
+<!-- Combo-handled YUI JS files: -->
+<script type="text/javascript" src="http://yui.yahooapis.com/combo?2.8.0r4/build/yahoo/yahoo-debug.js&2.8.0r4/build/event/event-debug.js&2.8.0r4/build/datasource/datasource-debug.js&2.8.0r4/build/dom/dom-debug.js&2.8.0r4/build/dragdrop/dragdrop-debug.js&2.8.0r4/build/element/element-debug.js&2.8.0r4/build/datatable/datatable-debug.js&2.8.0r4/build/logger/logger-debug.js"></script>
+ 
+</head> 
+ 
+<body class="yui-skin-sam"> 
+
+<h1>Result Sets</h1>
+<p>
+  <a href="#goodresult">Good</a>
+  <!-- isn't there a BadOriginResult ?? -->
+  <a href="#badtargetresult">Bad Target</a>
+  <a href="#errorresult">Error</a>
+</p>
+
+<a name="goodresult">
+  <h2>GoodResult</h2> 
+</a>
+<div id="goodresult">GOOD TARGET RESULTS...</div> 
+
+<a name="badtargetresult">
+  <h2>BadTargetResult</h2> 
+</a>
+<div id="badtargetresult">BAD TARGET RESULTS...</div>
+
+<a name="errorresult">
+  <h2>ErrorResult</h2>
+</a>
+<div id="errorresult">BAD TARGET RESULTS...</div>
+ 
+
+<script type="text/javascript"> 
+new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
+
+YAHOO.util.Event.addListener(window, "load", function() {
+    YAHOO.example.XHR_JSON = function() {
+
+        var urlPath = function(url) {
+            return url.replace(/http:\/\/[\w.]+/,'');
+        };
+        var formatUrlPath = function(elCell, oRecord, oColumn, sData) {
+            elCell.innerHTML = urlPath(sData);
+        };
+        var formatOriginCode = function(elCell, oRecord, oColumn, sData) {
+            elCell.innerHTML = "<a href='" + oRecord.getData("origin_url") + "' target='_origin'>" + sData + "</a>";
+        };
+        var formatTargetCode = function(elCell, oRecord, oColumn, sData) {
+            elCell.innerHTML = "<a href='" + oRecord.getData("target_url") + "' target='_target'>" + sData + "</a>";
+        };
+ 
+        var myColumnDefs = [
+            {key:"origin_response_code",          label:"Origin Code", sortable:true, formatter:formatOriginCode},
+            {key:"target_response_code",          label:"Target Code", sortable:true, formatter:formatTargetCode},
+            {key:"comparisons.BodyComparator",    label:"Body",        sortable:true},
+            {key:"comparisons.ContentComparator", label:"Content",     sortable:true},
+            {key:"comparisons.LengthComparator",  label:"Length",      sortable:true},
+            {key:"comparisons.TitleComparator",   label:"Title",       sortable:true},
+            {key:"origin_url",                    label:"URL Path",    sortable:true, formatter:formatUrlPath},
+        ];
+ 
+        var dataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare-stats.json");
+        dataSource.responseType = YAHOO.util.DataSource.TYPE_JSON;
+        dataSource.connXhrMode = "queueRequests";
+
+        var fields = ["origin_url", "target_url", "origin_response_code", "target_response_code",
+                     {key:"comparisons.BodyComparator",    parser:"number"},
+		     {key:"comparisons.ContentComparator", parser:"number"},
+		     {key:"comparisons.LengthComparator",  parser:"number"},
+		     {key:"comparisons.TitleComparator",   parser:"number"}
+                    ];
+
+        var goodResults = dataSource;
+        goodResults.responseSchema = {
+            resultsList: "results.resulttypes.GoodResult",
+            fields: fields
+        };
+        var goodTable = new YAHOO.widget.DataTable("goodresult", myColumnDefs, goodResults);
+
+        var badTargetResults = dataSource;
+        badTargetResults.responseSchema = {
+            resultsList: "results.resulttypes.BadTargetResult",
+            fields: fields
+        };
+        var badTargetTable = new YAHOO.widget.DataTable("badtargetresult", myColumnDefs, badTargetResults);
+
+        var errorResults = dataSource;
+        errorResults.responseSchema = {
+            resultsList: "results.resulttypes.ErrorResult",
+            fields: fields
+        };
+        var errortTable = new YAHOO.widget.DataTable("errorresult", myColumnDefs, errorResults);
+
+    }();
+});
+</script> 
+ 
+</body> 
+</html> 
