@@ -41,8 +41,7 @@ YAHOO.util.Event.addListener(window, "load", function() {
 	/// create dict with keys of good, etc, set to true
 	/// then in filter check whether ...result_type in resulttypedict
 
-
-        var dataSource = new YAHOO.util.DataSource("http://asylum.hitsshq.com/~cshenton/webcompare/webcompare-kids.json",
+	var dataSource = new YAHOO.util.DataSource("webcompare.json",
 						   {
 						       doBeforeCallback : function (req,raw,res,cb) {
 							   // This is the filter function
