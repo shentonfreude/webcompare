@@ -1,4 +1,7 @@
-new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
+// I'm not proud of this ...
+// It's my first use of JavaScript, cargo-culted from the YUI site.
+
+//new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
 
 YAHOO.util.Event.addListener(window, "load", function() {
     YAHOO.example.XHR_JSON = function() {
@@ -16,31 +19,20 @@ YAHOO.util.Event.addListener(window, "load", function() {
             elCell.innerHTML = "<a href='" + oRecord.getData("target_url") + "' target='_target'>" + sData + "</a>";
         };
         var formatDownloadTime = function(elCell, oRecord, oColumn, sData) {
-            // Return None if we got None, or rounded float if we got real data
+            // Return rounded float if we got real data, or None if not
             elCell.innerHTML = Math.round(sData * 100) / 100 || sData;
         };
 
-        var resfilter = function(req,raw,res,cb) {
-            var data = res.results || [];
-            var filtered = [];
-            var i,l;
-            if (req) {
-                req = req.toLowerCase();
-                for (i = 0, l = data.length; i < l; ++i) {
-		    if ( ! data[i].result_type.toLowerCase().indexOf(req)) {
-                        filtered.push(data[i]);
-                    }
-                }
-                res.results = filtered;
-            }
-            return res
-        }
-
-	var good = document.getElementById("GoodResult")
-	///
-	/// create dict with keys of good, etc, set to true
-	/// then in filter check whether ...result_type in resulttypedict
-
+	var getResFilter = function() {
+	    var resFilter = {};
+	    if ( document.getElementById("ErrorResult").checked )     { resFilter["ErrorResult"] = 1 };
+	    if ( document.getElementById("BadOriginResult").checked ) { resFilter["BadOriginResult"] = 1 };
+	    if ( document.getElementById("BadTargetResult").checked ) { resFilter["BadTargetResult"] = 1 };
+	    if ( document.getElementById("GoodResult").checked )      { resFilter["GoodResult"] = 1 };
+	    console.log("resFilter return Error=" + resFilter['ErrorResult'] + " BadOrig=" + resFilter['BadOriginResult'] +
+			" BadTarg=" + resFilter['BadTargetResult'] + " Good=" + resFilter['GoodResult']);
+	    return resFilter;
+	}
 	var dataSource = new YAHOO.util.DataSource("webcompare.json",
 						   {
 						       doBeforeCallback : function (req,raw,res,cb) {
@@ -48,8 +40,9 @@ YAHOO.util.Event.addListener(window, "load", function() {
 							   var data     = res.results || [];
 							   var filtered = [];
 							   var i,l;
+							   var resFilter = getResFilter();
 							   for (i = 0, l = data.length; i < l; ++i) {
-							       if (data[i].result_type != "GoodResult") {
+							       if (data[i].result_type in resFilter) {
 								   filtered.push(data[i]);
 							       }
 							   }
@@ -84,5 +77,16 @@ YAHOO.util.Event.addListener(window, "load", function() {
 	
         var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);
 
+
+	// This seems a suboptimal way of re-drawing the table, what's correct?
+	var filterClick = function() {
+	    // Doesn't update on filter: dataTable.render();
+	    // Seems Overkill:
+            var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);
+	}
+	YAHOO.util.Event.addListener('filter','click', filterClick);
+
+
     }();
+
 });
