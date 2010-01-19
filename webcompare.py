@@ -349,7 +349,7 @@ class LengthComparator(Comparator):
         
     
 if __name__ == "__main__":
-    usage = "usage: %prog [--verbose --file json_output_file_path] origin_url target_url"
+    usage = 'usage: %prog [options] origin_url target_url   (do: "%prog --help" for help)'
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", help="log info about processing")
     parser.add_option("-f", "--file", dest="filename", help="path to store the json results to (default is stdout)")
