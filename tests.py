@@ -173,7 +173,7 @@ class TestUrlManglers(unittest.TestCase):
         pass
     def test_normalize_url(self):
         from webcompare import Walker
-        w = Walker("ignore", "ignore")
+        w = Walker("ignore", "ignore", ['\\?.*', '#.*', '/RSS.*', '<bound.*'])
         self.assertEquals(w._normalize_url("http://example.com?querystring"), "http://example.com")
         self.assertEquals(w._normalize_url("http://example.com#fragment"), "http://example.com")
         self.assertEquals(w._normalize_url("http://example.com/something"), "http://example.com/something")
