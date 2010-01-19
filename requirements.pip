@@ -1,3 +1,4 @@
 lxml
 coverage
 nose
+pylint
