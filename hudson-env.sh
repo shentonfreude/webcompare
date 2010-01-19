@@ -34,9 +34,7 @@ then
   easy_install pip
 fi
 
-if [ ! -f .venv/lib/python2.6/site-packages/lxml ]
-then
-  pip install -r requirements.pip
-fi
+pip install -r requirements.pip
+
 exit 0
 
