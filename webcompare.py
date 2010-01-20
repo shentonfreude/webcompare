@@ -144,7 +144,7 @@ class Walker(object):
         """
         for ignorere in self.ignoreres:
             url = re.sub(ignorere, "", url)
-        return url + "BROKEN"
+        return url
         
     def _get_urls(self, html, base_href): # UNUSED?
         """Return list of objects representing absolute URLs found in the html.
@@ -381,7 +381,6 @@ if __name__ == "__main__":
         f = sys.stdout
 
     w = Walker(args[0], args[1], ignoreres=options.ignoreres)
-    w.add_comparator(ILoveJava())
     w.add_comparator(LengthComparator())
     w.add_comparator(TitleComparator())
     w.add_comparator(BodyComparator())
