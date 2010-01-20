@@ -144,7 +144,7 @@ class Walker(object):
         """
         for ignorere in self.ignoreres:
             url = re.sub(ignorere, "", url)
-        return url
+        return url + "BROKEN"
         
     def _get_urls(self, html, base_href): # UNUSED?
         """Return list of objects representing absolute URLs found in the html.
