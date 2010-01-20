@@ -171,6 +171,7 @@ class TestResponse(unittest.TestCase):
 class TestUrlManglers(unittest.TestCase):
     def SetUp(self):
         pass
+
     def test_normalize_url(self):
         from webcompare import Walker
         w = Walker("ignore", "ignore", ['\\?.*', '#.*', '/RSS.*', '<bound.*'])

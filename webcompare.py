@@ -381,6 +381,7 @@ if __name__ == "__main__":
         f = sys.stdout
 
     w = Walker(args[0], args[1], ignoreres=options.ignoreres)
+    w.add_comparator(ILoveJava())
     w.add_comparator(LengthComparator())
     w.add_comparator(TitleComparator())
     w.add_comparator(BodyComparator())
