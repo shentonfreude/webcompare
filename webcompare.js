@@ -29,8 +29,8 @@ YAHOO.util.Event.addListener(window, "load", function() {
 	    if ( document.getElementById("BadOriginResult").checked ) { resFilter["BadOriginResult"] = 1 };
 	    if ( document.getElementById("BadTargetResult").checked ) { resFilter["BadTargetResult"] = 1 };
 	    if ( document.getElementById("GoodResult").checked )      { resFilter["GoodResult"] = 1 };
-	    console.log("resFilter return Error=" + resFilter['ErrorResult'] + " BadOrig=" + resFilter['BadOriginResult'] +
-			" BadTarg=" + resFilter['BadTargetResult'] + " Good=" + resFilter['GoodResult']);
+	    //console.log("resFilter return Error=" + resFilter['ErrorResult'] + " BadOrig=" + resFilter['BadOriginResult'] +
+	    //" BadTarg=" + resFilter['BadTargetResult'] + " Good=" + resFilter['GoodResult']);
 	    return resFilter;
 	}
 	var dataSource = new YAHOO.util.DataSource("webcompare.json",
