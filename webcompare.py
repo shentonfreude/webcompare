@@ -12,21 +12,30 @@ import sys
 import os
 import re                       # "now you've got *two* problems"
 import time
+import _elementtidy
 
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
+    This simple object seems unnecessarily complex, but it's all defending against abuse. 
+    Should I just create a Result upon origin retrieval,
+    then add attributes to it as further progress is made?
+    Instead of trying to do it once for each retrieval outcome?
     """
     def __init__(self,
                  origin_url,      origin_code,      origin_time=None,
+                 origin_html_errors=None,
                  target_url=None, target_code=None, target_time=None,
+                 target_html_errors=None,
                  comparisons={}):
         self.result_type = self.__class__.__name__
         self.origin_url  = origin_url
         self.origin_code = int(origin_code)
         self.origin_time = origin_time
+        self.origin_html_errors = origin_html_errors
         self.target_url  = target_url
         self.target_code = target_code
         self.target_time = target_time
+        self.target_html_errors = target_html_errors
         self.comparisons = comparisons
         if not hasattr(self.result_type, "lower"):
             raise TypeError, "result_type must be a string"
@@ -36,12 +45,16 @@ class Result(object):
             raise TypeError, "origin_code=%s must be a int" % self.origin_code
         if self.origin_time != None and type(self.origin_time) != float:
             raise TypeError, "origin_time=%s must be a float" % self.origin_time
+        if self.origin_html_errors != None and type(self.origin_html_errors) != int:
+            raise TypeError, "origin_html_errors=%s must be an int" % self.origin_html_errors
         if self.target_url != None and not hasattr(self.target_url, "lower"):
             raise TypeError, "target_url=%s must be a string" % self.target_url
         if self.target_code != None and type(self.target_code) != int:
             raise TypeError, "target_code=%s must be a int" % self.target_code
         if (self.target_time != None and type(self.target_time) != float):
             raise TypeError, "target_time=%s must be a float" % self.target_time
+        if self.target_html_errors != None and type(self.target_html_errors) != int:
+            raise TypeError, "target_html_errors=%s must be an int" % self.target_html_errors
         if not hasattr(self.comparisons, "keys"):
             raise TypeError, "comparisons=%s must be a dict" % self.comparisons
                                
@@ -167,25 +180,27 @@ class Walker(object):
         """
         self.comparators.append(comparator_function)
 
+    def count_html_errors(self, html):
+        """Run the HTML through a tidy process and count the number of complaint lines.
+        Naive but a fine first pass.
+        Should probably count Warning and Error differently.
+        Could also use http://countergram.com/open-source/pytidylib/
+        """
+        xhtml, log = _elementtidy.fixup(html)
+        return len(log.splitlines())
+
     def json_results(self):
         """Return the JSON representation of results and stats.
         Add the result type to each result so JS can filter on them.
         Hopefully will allow clever JS tricks to render and sort in browser.
         """
-        #result_tally = defaultdict(list)
-        #for r in self.results:
-        #    result_tally[r.__class__.__name__].append(r.__dict__)
-        #stats=dict([(k, len(result_tally[k])) for k in result_tally.keys()]) # my eyes are bleedin'
         stats = {}
+        #import pdb; pdb.set_trace()
         for r in self.results:
-            stats[r.result_type] = stats.get('result_type', 0) + 1
+            stats[r.result_type] = stats.get(r.result_type, 0) + 1
         result_list = [r.__dict__ for r in self.results]
         all_results = dict(results=dict(resultlist=result_list, stats=stats))
-        try:
-            json_results = json.dumps(all_results, sort_keys=True, indent=4)
-        except Exception, e:
-            import pdb; pdb.set_trace()
-            logging.error("ERROR converting to JSON, help me:", e)
+        json_results = json.dumps(all_results, sort_keys=True, indent=4)
         return json_results
     
     def walk_and_compare(self):
@@ -218,6 +233,7 @@ class Walker(object):
                 continue
             else:
                 if origin_response.content_type.startswith("text/html"):
+                    origin_html_errors = self.count_html_errors(origin_response.content)
                     for url_obj in origin_response.htmltree.iterlinks():
                         url = self._normalize_url(url_obj[2])
                         if not self._is_within_origin(url):
@@ -233,6 +249,7 @@ class Walker(object):
                     target_time = time.time() - t
                 except urllib2.URLError, e:
                     result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
+                                             origin_html_errors=origin_html_errors,
                                              target_url=target_url, target_code=e.code)
                     self.results.append(result)
                     logging.warning(result)
@@ -242,12 +259,15 @@ class Walker(object):
                     logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
                             origin_response.htmltree, target_response.htmltree))
                 else:
+                    target_html_errors = self.count_html_errors(target_response.content)
                     for comparator in self.comparators:
                         proximity = comparator.compare(origin_response, target_response)
                         comparisons[comparator.__class__.__name__] = proximity
                 result = GoodResult(origin_url, origin_response.code, origin_time=origin_time,
+                                    origin_html_errors=origin_html_errors,
                                     target_url=target_url, target_code=target_response.code,
                                     target_time=target_time,
+                                    target_html_errors=target_html_errors,
                                     comparisons=comparisons)
                 self.results.append(result)
                 logging.info(result)

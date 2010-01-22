@@ -29,8 +29,6 @@ YAHOO.util.Event.addListener(window, "load", function() {
 	    if ( document.getElementById("BadOriginResult").checked ) { resFilter["BadOriginResult"] = 1 };
 	    if ( document.getElementById("BadTargetResult").checked ) { resFilter["BadTargetResult"] = 1 };
 	    if ( document.getElementById("GoodResult").checked )      { resFilter["GoodResult"] = 1 };
-	    //console.log("resFilter return Error=" + resFilter['ErrorResult'] + " BadOrig=" + resFilter['BadOriginResult'] +
-	    //" BadTarg=" + resFilter['BadTargetResult'] + " Good=" + resFilter['GoodResult']);
 	    return resFilter;
 	}
 	var dataSource = new YAHOO.util.DataSource("webcompare.json",
@@ -54,7 +52,11 @@ YAHOO.util.Event.addListener(window, "load", function() {
 
         dataSource.responseSchema = {
             resultsList: "results.resultlist",
-            fields: ["result_type", "origin_url", "target_url", "origin_code", "target_code", "origin_time", "target_time",
+            fields: ["result_type",
+		     "origin_url", "target_url",
+		     "origin_code", "target_code",
+		     "origin_time", "target_time",
+		     "origin_html_errors", "target_html_errors",
                      {key:"comparisons.BodyComparator",    parser:"number"},
 		     {key:"comparisons.ContentComparator", parser:"number"},
 		     {key:"comparisons.LengthComparator",  parser:"number"},
@@ -63,16 +65,18 @@ YAHOO.util.Event.addListener(window, "load", function() {
         };
 
         var tableColumns = [
-            {key:"result_type",			  label:"Result Type", sortable:true},
-            {key:"origin_code",			  label:"Origin Code", sortable:true, formatter:formatOriginCode},
-            {key:"target_code",			  label:"Target Code", sortable:true, formatter:formatTargetCode},
-            {key:"origin_time",			  label:"Origin Time", sortable:true, formatter:formatDownloadTime},
-            {key:"target_time",			  label:"Target Time", sortable:true, formatter:formatDownloadTime},
-            {key:"comparisons.BodyComparator",    label:"Body",        sortable:true},
-            {key:"comparisons.ContentComparator", label:"Content",     sortable:true},
-            {key:"comparisons.LengthComparator",  label:"Length",      sortable:true},
-            {key:"comparisons.TitleComparator",   label:"Title",       sortable:true},
-            {key:"origin_url",                    label:"URL Path",    sortable:true, formatter:formatUrlPath},
+            {key:"result_type",			  label:"Result<br/>Type",	sortable:true},
+            {key:"origin_code",			  label:"Origin<br/>Code",	sortable:true, formatter:formatOriginCode},
+            {key:"target_code",			  label:"Target<br/>Code",	sortable:true, formatter:formatTargetCode},
+            {key:"origin_time",			  label:"Origin<br/>Time",	sortable:true, formatter:formatDownloadTime},
+            {key:"target_time",			  label:"Target<br/>Time",	sortable:true, formatter:formatDownloadTime},
+            {key:"origin_html_errors",		  label:"Origin<br/>Errors",	sortable:true},
+            {key:"target_html_errors",		  label:"Target<br/>Errors",	sortable:true},
+            {key:"comparisons.BodyComparator",    label:"Body<br/>proxim",      sortable:true},
+            {key:"comparisons.ContentComparator", label:"Content<br/>proxim",   sortable:true},
+            {key:"comparisons.LengthComparator",  label:"Length<br/>proxim",    sortable:true},
+            {key:"comparisons.TitleComparator",   label:"Title<br/>proxim",     sortable:true},
+            {key:"origin_url",                    label:"URL Path",		sortable:true, formatter:formatUrlPath},
         ];
 	
         var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);

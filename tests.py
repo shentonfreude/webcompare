@@ -56,6 +56,13 @@ class TestWebCompare(unittest.TestCase):
         self.walker.add_comparator(bogus_comparator)
         self.assertEquals(self.walker.comparators[-1], bogus_comparator)
 
+    def test_count_html_errors(self):
+        self.assertEquals(self.walker.count_html_errors(""), 1)
+        self.assertEquals(self.walker.count_html_errors("<html></html>"), 3)
+        self.assertEquals(self.walker.count_html_errors("<html><head><title BROKEN><body><p>Missing P</html>"), 3)
+
+        
+
 class TestNormalizer(unittest.TestCase):
 
     def setUp(self):
@@ -122,6 +129,12 @@ class TestResult(unittest.TestCase):
         self.assertEquals(r.comparisons, {})
         self.assertTrue("comp={}" in r.__str__())
 
+    def test___init__html_errors(self):
+        r = self.Result("originurl", 200, origin_html_errors=42, target_html_errors=666)
+        self.assertEquals(r.origin_html_errors, 42)
+        self.assertEquals(r.target_html_errors, 666)
+
+
     def test___init__comparisons(self):
         r = self.Result("originurl", 666, target_url="targeturl", target_code=777, comparisons={'fee': 42, 'fi':666, 'foo':0xDeadBeef})
         self.assertEquals(r.comparisons, {'fee': 42, 'fi':666, 'foo':0xDeadBeef})
@@ -142,14 +155,22 @@ class TestWalkerJsonResults(unittest.TestCase):
         pass
 
     def test_json_results(self):
+        import json
         from webcompare import Walker     
         from webcompare import ErrorResult, BadOriginResult, BadTargetResult, GoodResult
         walker = Walker("origin", "target")
-        walker.results.extend([ErrorResult("error", 1), BadOriginResult("origin", 2),
-                                BadTargetResult("target", 3), GoodResult("good", 4)])
-        j = walker.json_results()
+        walker.results.extend([ErrorResult("e1", 0),
+                               BadOriginResult("bo1", 0), BadOriginResult("bo2", 0),
+                               BadTargetResult("bt1", 0), BadTargetResult("bt2", 0),
+                               GoodResult("g1", 0), GoodResult("g2", 0),
+                               ])
+        results = json.loads(walker.json_results())
+        stats = results['results']['stats']
+        self.assertEquals(stats['ErrorResult'], 1)
+        self.assertEquals(stats['BadOriginResult'], 2)
+        self.assertEquals(stats['BadTargetResult'], 2)
+        self.assertEquals(stats['GoodResult'], 2)
 
-        
 
 class TestResponse(unittest.TestCase):
     def setUp(self):
