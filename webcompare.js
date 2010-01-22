@@ -31,6 +31,25 @@ YAHOO.util.Event.addListener(window, "load", function() {
 	    if ( document.getElementById("GoodResult").checked )      { resFilter["GoodResult"] = 1 };
 	    return resFilter;
 	}
+
+	// This duplicates the json loading but I don't know yet how else to
+	// process the same data to get stats AND filtered result details.
+	//
+	var statsSource = new YAHOO.util.DataSource("webcompare.json")
+	statsSource.responseSchema = {
+	    resultsList: "results.stats",
+	    fields:	 ["ErrorResult", "BadOriginResult", "BadTargetResult", "GoodResult"]
+	}
+	var statsColumns = [
+	    {key:"ErrorResult",		label:"ErrorResult"},
+	    {key:"BadOriginResult",	label:"BadOriginResult"},
+	    {key:"BadTargetResult",	label:"BadTargetResult"},
+	    {key:"GoodResult",		label:"GoodResult"}
+	    ]
+	var statsTable = new YAHOO.widget.DataTable("statsTable", statsColumns, statsSource);
+
+
+
 	var dataSource = new YAHOO.util.DataSource("webcompare.json",
 						   {
 						       doBeforeCallback : function (req,raw,res,cb) {
