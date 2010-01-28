@@ -45,16 +45,16 @@ class Result(object):
             raise TypeError, "origin_code=%s must be a int" % self.origin_code
         if self.origin_time != None and type(self.origin_time) != float:
             raise TypeError, "origin_time=%s must be a float" % self.origin_time
-        if self.origin_html_errors != None and type(self.origin_html_errors) != int:
-            raise TypeError, "origin_html_errors=%s must be an int" % self.origin_html_errors
+        #if self.origin_html_errors != None and type(self.origin_html_errors) != int:
+        #    raise TypeError, "origin_html_errors=%s must be an int" % self.origin_html_errors
         if self.target_url != None and not hasattr(self.target_url, "lower"):
             raise TypeError, "target_url=%s must be a string" % self.target_url
         if self.target_code != None and type(self.target_code) != int:
             raise TypeError, "target_code=%s must be a int" % self.target_code
         if (self.target_time != None and type(self.target_time) != float):
             raise TypeError, "target_time=%s must be a float" % self.target_time
-        if self.target_html_errors != None and type(self.target_html_errors) != int:
-            raise TypeError, "target_html_errors=%s must be an int" % self.target_html_errors
+        #if self.target_html_errors != None and type(self.target_html_errors) != int:
+        #    raise TypeError, "target_html_errors=%s must be an int" % self.target_html_errors
         if not hasattr(self.comparisons, "keys"):
             raise TypeError, "comparisons=%s must be a dict" % self.comparisons
                                
@@ -187,7 +187,10 @@ class Walker(object):
         Could also use http://countergram.com/open-source/pytidylib/
         """
         xhtml, log = _elementtidy.fixup(html)
-        return len(log.splitlines())
+        #return len(log.splitlines())
+        # return the *list* of errors, for rendering in JS as a popup
+        return log.splitlines()
+        
 
     def json_results(self):
         """Return the JSON representation of results and stats.
