@@ -1,5 +1,14 @@
-// I'm not proud of this ...
-// It's my first use of JavaScript, cargo-culted from the YUI site.
+/*jslint browser: true, onevar: true, undef: true, nomen: true,
+  eqeqeq: true, plusplus: true, bitwise: true, regexp: true, strict: true,
+  newcap: true, immed: true,
+  indent: 4, white: false
+*/
+/* I can NOT get the JS indent to work with Emacs Espresso: JSLint wants 4, 9, 13... not 4,8,12,
+ */
+/* I added indent */
+/*global YAHOO, window */
+
+// I'm not proud of this: it's my first use of JavaScript, cargo-culted from the YUI site.
 
 // ChrisA recommends registering a click handler for the column
 // which will save all the gross <... onClick/> markup
@@ -8,70 +17,73 @@
 
 
 function popWindow(content) {		    // EVIL GLOBAL
-    var mywin = open('', "popWindow"); // Why? works with and without var
+    var mywin = open('', "popWindow", 'height=400,location=no,menubar=no,status=no,toolbar=no'); // Why? works with and without var
     mywin.document.write(content || "NO CONTENT PROVIDED");
     mywin.document.close();
     return mywin;
 }
 var htmlErrorText = "NOT INSTANTIATED";
-
+ 
 
 
 
 // 2010-01-27 I've got a scoping issue.
 // All the popups report 19 errors, which is the LAST set of sData values..
 
-YAHOO.util.Event.addListener(window, "load", function() {
-    YAHOO.example.XHR_JSON = function() {
-
+YAHOO.util.Event.addListener(window, "load", function () {
+    YAHOO.example.XHR_JSON = function () {
+	// This is a LAME way of declaring functions, def vars ahead then remove from func decls
 	var heHtml = function (dataArry) {
 	    if (! dataArry) {
 		return "empty";
 	    }
-	    out = [];
-	    for (ln=0; ln<dataArry.length; ln++) {
+	    var out = [],
+	        ln;
+	    for (ln=0; ln < dataArry.length; ln = ln + 1) {
 		out[ln] = dataArry[ln].replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	    }
 	    htmlErrorText = out.join("<br/>");
 	    htmlErrorText = "Len=" + dataArry.length + "<br/>" + htmlErrorText;
-	    return '<b onClick="popWindow(htmlErrorText);">' + dataArry.length + '</b>';
+	    return '<a href="javascript:void(0)" onClick="popWindow(htmlErrorText);">' + dataArry.length + '</a>';
 	};
-
-
-
-        var urlPath = function(url) {
+	
+	
+	
+        var urlPath = function (url) {
             return url.replace(/http:\/\/[\w.]+/,'');
         };
-
-        var formatUrlPath = function(elCell, oRecord, oColumn, sData) {
+	
+        var formatUrlPath = function (elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = urlPath(sData);
         };
-        var formatOriginCode = function(elCell, oRecord, oColumn, sData) {
+        var formatOriginCode = function (elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = "<a href='" + oRecord.getData("origin_url") + "' target='_origin'>" + sData + "</a>";
         };
-        var formatTargetCode = function(elCell, oRecord, oColumn, sData) {
+        var formatTargetCode = function (elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = "<a href='" + oRecord.getData("target_url") + "' target='_target'>" + sData + "</a>";
         };
-        var formatDownloadTime = function(elCell, oRecord, oColumn, sData) {
+        var formatDownloadTime = function (elCell, oRecord, oColumn, sData) {
             // Return rounded float if we got real data, or None if not
             elCell.innerHTML = Math.round(sData * 100) / 100 || sData;
         };
-        var formatHtmlErrors = function(elCell, oRecord, oColumn, sData) {
+        var formatHtmlErrors = function (elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = heHtml(sData);
         };
 	    
-	var getResFilter = function() {
+	var getResFilter = function () {
 	    var resFilter = {};
-	    if ( document.getElementById("ErrorResult").checked )     { resFilter["ErrorResult"] = 1 };
-	    if ( document.getElementById("BadOriginResult").checked ) { resFilter["BadOriginResult"] = 1 };
-	    if ( document.getElementById("BadTargetResult").checked ) { resFilter["BadTargetResult"] = 1 };
-	    if ( document.getElementById("GoodResult").checked )      { resFilter["GoodResult"] = 1 };
+	    //if ( document.getElementById("ErrorResult").checked )     { resFilter["ErrorResult"] = 1 };
+
+	    if ( document.all.ErrorResult.checked ) { resFilter.ErrorResult = 1; }
+	    if ( document.all.BadOriginResult.checked ) { resFilter.BadOriginResult = 1; }
+	    if ( document.all.BadTargetResult.checked ) { resFilter.BadTargetResult = 1; }
+	    if ( document.all.GoodResult.checked )      { resFilter.GoodResult = 1; }
 	    return resFilter;
-	}
+	};
 
 	// This duplicates the json loading but I don't know yet how else to
 	// process the same data to get stats AND filtered result details.
-	var statsSource = new YAHOO.util.DataSource("webcompare.json")
+	var statsSource = new YAHOO.util.DataSource("webcompare.json");
 	statsSource.responseSchema = {
 	    resultsList: "results.stats",
 	    fields:	 ["ErrorResult", "BadOriginResult", "BadTargetResult", "GoodResult"]
