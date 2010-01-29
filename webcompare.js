@@ -1,14 +1,48 @@
 // I'm not proud of this ...
 // It's my first use of JavaScript, cargo-culted from the YUI site.
 
+// ChrisA recommends registering a click handler for the column
+// which will save all the gross <... onClick/> markup
+
 //new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
+
+
+function popWindow(content) {		    // EVIL GLOBAL
+    var mywin = open('', "popWindow"); // Why? works with and without var
+    mywin.document.write(content || "NO CONTENT PROVIDED");
+    mywin.document.close();
+    return mywin;
+}
+var htmlErrorText = "NOT INSTANTIATED";
+
+
+
+
+// 2010-01-27 I've got a scoping issue.
+// All the popups report 19 errors, which is the LAST set of sData values..
 
 YAHOO.util.Event.addListener(window, "load", function() {
     YAHOO.example.XHR_JSON = function() {
 
+	var heHtml = function (dataArry) {
+	    if (! dataArry) {
+		return "empty";
+	    }
+	    out = [];
+	    for (ln=0; ln<dataArry.length; ln++) {
+		out[ln] = dataArry[ln].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	    }
+	    htmlErrorText = out.join("<br/>");
+	    htmlErrorText = "Len=" + dataArry.length + "<br/>" + htmlErrorText;
+	    return '<b onClick="popWindow(htmlErrorText);">' + dataArry.length + '</b>';
+	};
+
+
+
         var urlPath = function(url) {
             return url.replace(/http:\/\/[\w.]+/,'');
         };
+
         var formatUrlPath = function(elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = urlPath(sData);
         };
@@ -22,7 +56,10 @@ YAHOO.util.Event.addListener(window, "load", function() {
             // Return rounded float if we got real data, or None if not
             elCell.innerHTML = Math.round(sData * 100) / 100 || sData;
         };
-
+        var formatHtmlErrors = function(elCell, oRecord, oColumn, sData) {
+            elCell.innerHTML = heHtml(sData);
+        };
+	    
 	var getResFilter = function() {
 	    var resFilter = {};
 	    if ( document.getElementById("ErrorResult").checked )     { resFilter["ErrorResult"] = 1 };
@@ -34,7 +71,6 @@ YAHOO.util.Event.addListener(window, "load", function() {
 
 	// This duplicates the json loading but I don't know yet how else to
 	// process the same data to get stats AND filtered result details.
-	//
 	var statsSource = new YAHOO.util.DataSource("webcompare.json")
 	statsSource.responseSchema = {
 	    resultsList: "results.stats",
@@ -89,8 +125,8 @@ YAHOO.util.Event.addListener(window, "load", function() {
             {key:"target_code",			  label:"Target<br/>Code",	sortable:true, formatter:formatTargetCode},
             {key:"origin_time",			  label:"Origin<br/>Time",	sortable:true, formatter:formatDownloadTime},
             {key:"target_time",			  label:"Target<br/>Time",	sortable:true, formatter:formatDownloadTime},
-            {key:"origin_html_errors",		  label:"Origin<br/>Errors",	sortable:true},
-            {key:"target_html_errors",		  label:"Target<br/>Errors",	sortable:true},
+            {key:"origin_html_errors",		  label:"Origin<br/>Errors",	sortable:true, formatter:formatHtmlErrors},
+            {key:"target_html_errors",		  label:"Target<br/>Errors",	sortable:true, formatter:formatHtmlErrors},
             {key:"comparisons.BodyComparator",    label:"Body<br/>proxim",      sortable:true},
             {key:"comparisons.ContentComparator", label:"Content<br/>proxim",   sortable:true},
             {key:"comparisons.LengthComparator",  label:"Length<br/>proxim",    sortable:true},
