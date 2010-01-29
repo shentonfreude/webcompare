@@ -3,79 +3,42 @@
   newcap: true, immed: true,
   indent: 4, white: true, onevar: false
 */
-/* I can NOT get the JS indent to work with Emacs Espresso: JSLint wants 4, 9, 13... not 4,8,12,
- */
-/* I added indent */
 /*global YAHOO, window */
 
-// I'm not proud of this: it's my first use of JavaScript, cargo-culted from the YUI site.
-
-// ChrisA recommends registering a click handler for the column
-// which will save all the gross <... onClick/> markup
-
-//new YAHOO.widget.LogReader("my_logger", {draggable:true}); 
+// I'm not proud of this: my first JavaScript, cargo-culted from the YUI site.
 
 
-function popWindow(content) {               // EVIL GLOBAL
-    var mywin = open('', "popWindow", 'height=400,location=no,menubar=no,status=no,toolbar=no'); // Why? works with and without var
-    mywin.document.write(content || "NO CONTENT PROVIDED");
-    mywin.document.close();
-    return mywin;
-}
-var htmlErrorText = "NOT INSTANTIATED";
- 
-
-
-
-// 2010-01-27 I've got a scoping issue.
-// All the popups report 19 errors, which is the LAST set of sData values..
-
+"use strict";
 YAHOO.util.Event.addListener(window, "load", function () {
     YAHOO.example.XHR_JSON = function () {
-        // This is a LAME way of declaring functions, def vars ahead then remove from func decls
-        var heHtml = function (dataArry) {
-            if (! dataArry) {
-                return "empty";
-            }
-            var out = [],
-                ln;
-            for (ln = 0; ln < dataArry.length; ln = ln + 1) {
-                out[ln] = dataArry[ln].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            }
-            htmlErrorText = out.join("<br/>");
-            htmlErrorText = "Len=" + dataArry.length + "<br/>" + htmlErrorText;
-            return '<a href="javascript:void(0)" onClick="popWindow(htmlErrorText);">' + dataArry.length + '</a>';
-        };
-        
-        
         
         var urlPath = function (url) {
             return url.replace(/http:\/\/[\w.]+/, '');
         };
-        
         var formatUrlPath = function (elCell, oRecord, oColumn, sData) {
             elCell.innerHTML = urlPath(sData);
         };
         var formatOriginCode = function (elCell, oRecord, oColumn, sData) {
-            elCell.innerHTML = "<a href='" + oRecord.getData("origin_url") + "' target='_origin'>" + sData + "</a>";
+            elCell.innerHTML = "<a href='" + oRecord.getData("origin_url") +
+                "' target='_origin'>" + sData + "</a>";
         };
         var formatTargetCode = function (elCell, oRecord, oColumn, sData) {
-            elCell.innerHTML = "<a href='" + oRecord.getData("target_url") + "' target='_target'>" + sData + "</a>";
+            elCell.innerHTML = (sData ?
+                                "<a href='" + oRecord.getData("target_url") +
+                                "' target='_target'>" + sData + "</a>" : '');
         };
         var formatDownloadTime = function (elCell, oRecord, oColumn, sData) {
-            // Return rounded float if we got real data, or None if not
             elCell.innerHTML = Math.round(sData * 100) / 100 || sData;
         };
         var formatHtmlErrors = function (elCell, oRecord, oColumn, sData) {
-            elCell.innerHTML = sData.length;//heHtml(sData);
+            elCell.innerHTML = (sData ? sData.length : '');
         };
-            
         var getResFilter = function () {
             var resFilter = {};
-            if (document.getElementById("ErrorResult").checked)     { resFilter.ErrorResult = 1; }
-            if (document.getElementById("BadOriginResult").checked) { resFilter.BadOriginResult = 1; }
-            if (document.getElementById("BadTargetResult").checked) { resFilter.BadTargetResult = 1; }
-            if (document.getElementById("GoodResult").checked)      { resFilter.GoodResult = 1; }
+            resFilter.ErrorResult     = (document.getElementById("ErrorResult").checked === true);
+            resFilter.BadOriginResult = (document.getElementById("BadOriginResult").checked === true);
+            resFilter.BadTargetResult = (document.getElementById("BadTargetResult").checked === true);
+            resFilter.GoodResult      = (document.getElementById("GoodResult").checked === true);
             return resFilter;
         };
 
@@ -94,26 +57,21 @@ YAHOO.util.Event.addListener(window, "load", function () {
             ]
         var statsTable = new YAHOO.widget.DataTable("statsTable", statsColumns, statsSource);
 
-
-
         var dataSource = new YAHOO.util.DataSource("webcompare.json", {
-            doBeforeCallback : function (req, raw, res, cb) {
-                // This is the filter function
+            doBeforeCallback : function (req, raw, res, cb) { // filter
                 var data     = res.results || [];
                 var filtered = [];
                 var i, l;
                 var resFilter = getResFilter();
                 for (i = 0, l = data.length; i < l; i = i + 1) {
-                    if (data[i].result_type in resFilter) {
+                    if (resFilter[data[i].result_type] === true) {
                         filtered.push(data[i]);
                     }
                 }
                 res.results = filtered;
                 return res;
             }
-        }
-                                                  );
-	
+        });
         dataSource.responseSchema = {
             resultsList: "results.resultlist",
             fields: ["result_type",
@@ -144,40 +102,37 @@ YAHOO.util.Event.addListener(window, "load", function () {
         ];
         
         var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);
-	dataTable.set("seletionMode", "singlecell");
-	//dataTable.subscribe("cellClickEvent", dataTable.onEventSelectCell);
-	dataTable.subscribe("cellClickEvent", function (oArgs) {
-	    //cell = this.getCell(oArgs.target.)
-	    var html_errors = undefined;
-	    var ln;
-	    var rec = this.getRecord(oArgs.target);
-	    var data = rec.getData();
-	    var mywin;
-	    if (oArgs.target.headers.indexOf("origin_html_errors") > 0) {
-		html_errors = data.origin_html_errors;
-	    };
-	    if (oArgs.target.headers.indexOf("target_html_errors") > 0) {
-		html_errors = data.target_html_errors;
-	    };
-	    if (html_errors !== undefined) {
-		for (ln = 0; ln < html_errors.length; ln = ln + 1) {
+        dataTable.set("seletionMode", "singlecell");
+        dataTable.subscribe("cellClickEvent", function (oArgs) {
+            var html_errors;
+            var ln;
+            var rec = this.getRecord(oArgs.target);
+            var data = rec.getData();
+            var mywin;
+            if (oArgs.target.headers.indexOf("origin_html_errors") >= 0) {
+                html_errors = data.origin_html_errors;
+            }
+            if (oArgs.target.headers.indexOf("target_html_errors") >= 0) {
+                html_errors = data.target_html_errors;
+            }
+            if (html_errors !== undefined) {
+                for (ln = 0; ln < html_errors.length; ln = ln + 1) {
                     html_errors[ln] = html_errors[ln].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		}
-		mywin = window.open('', "popWindow", 'height=400,location=no,menubar=no,status=no,toolbar=no');
-		mywin.document.write(html_errors.join("<br/>"));
-		mywin.document.close();
-	    };
-	    return true;	// allow other handers to see the click
-	});
+                }
+                mywin = window.open('', "popWindow", 'height=400,location=no,menubar=no,status=no,toolbar=no');
+                mywin.document.write(html_errors.join("<br/>"));
+                mywin.document.close();
+            }
+            return true;        // allow other handers to see the click
+        });
 
 
-        // This seems a suboptimal way of re-drawing the table, what's correct?
+        // This is a suboptimal way of re-drawing the table, what's correct?
+        // BUGBUG: the refresh loses the eventsubscribers!
         var filterClick = function () {
             // Doesn't update on filter: dataTable.render();
-            // Seems Overkill:
             var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);
         };
         YAHOO.util.Event.addListener('filter', 'click', filterClick);
     }();
-
 });
