@@ -42,7 +42,7 @@ YAHOO.util.Event.addListener(window, "load", function () {
             return resFilter;
         };
 
-        // This duplicates the json loading but I don't know yet how else to
+        // This duplicates the JSON loading but I don't know yet how else to
         // process the same data to get stats AND filtered result details.
         var statsSource = new YAHOO.util.DataSource("webcompare.json");
         statsSource.responseSchema = {
@@ -126,13 +126,15 @@ YAHOO.util.Event.addListener(window, "load", function () {
             return true;        // allow other handers to see the click
         });
 
+        // Reload the table when they select new filter options and click on Filter!
 
-        // This is a suboptimal way of re-drawing the table, what's correct?
-        // BUGBUG: the refresh loses the eventsubscribers!
-        var filterClick = function () {
-            // Doesn't update on filter: dataTable.render();
-            var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);
-        };
-        YAHOO.util.Event.addListener('filter', 'click', filterClick);
+        YAHOO.util.Event.addListener('filter', 'click', function () {
+            dataTable.showTableMessage("Reloading ...");
+            dataTable.getDataSource().sendRequest(
+                '',
+                {success: dataTable.onDataReturnInitializeTable,
+                 scope: dataTable});
+        });
+
     }();
 });
