@@ -15,7 +15,8 @@ import time
 import _elementtidy
 
 class Result(object):
-    """Return origin and target URL, HTTP success code, redirect urls, and dict/list of comparator operations.
+    """Return origin and target URL, HTTP success code, redirect urls, performance error, comparator stats.
+    The HTML errors are actually a list of reported errors, so we can popup details in the report.
     This simple object seems unnecessarily complex, but it's all defending against abuse. 
     Should I just create a Result upon origin retrieval,
     then add attributes to it as further progress is made?
@@ -45,16 +46,16 @@ class Result(object):
             raise TypeError, "origin_code=%s must be a int" % self.origin_code
         if self.origin_time != None and type(self.origin_time) != float:
             raise TypeError, "origin_time=%s must be a float" % self.origin_time
-        #if self.origin_html_errors != None and type(self.origin_html_errors) != int:
-        #    raise TypeError, "origin_html_errors=%s must be an int" % self.origin_html_errors
+        if self.origin_html_errors != None and type(self.origin_html_errors) != list:
+            raise TypeError, "origin_html_errors=%s must be a list (of errors)" % self.origin_html_errors
         if self.target_url != None and not hasattr(self.target_url, "lower"):
             raise TypeError, "target_url=%s must be a string" % self.target_url
         if self.target_code != None and type(self.target_code) != int:
             raise TypeError, "target_code=%s must be a int" % self.target_code
         if (self.target_time != None and type(self.target_time) != float):
             raise TypeError, "target_time=%s must be a float" % self.target_time
-        #if self.target_html_errors != None and type(self.target_html_errors) != int:
-        #    raise TypeError, "target_html_errors=%s must be an int" % self.target_html_errors
+        if self.target_html_errors != None and type(self.target_html_errors) != list:
+            raise TypeError, "target_html_errors=%s must be an list (of errors)" % self.target_html_errors
         if not hasattr(self.comparisons, "keys"):
             raise TypeError, "comparisons=%s must be a dict" % self.comparisons
                                

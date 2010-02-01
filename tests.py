@@ -57,9 +57,9 @@ class TestWebCompare(unittest.TestCase):
         self.assertEquals(self.walker.comparators[-1], bogus_comparator)
 
     def test_count_html_errors(self):
-        self.assertEquals(self.walker.count_html_errors(""), 1)
-        self.assertEquals(self.walker.count_html_errors("<html></html>"), 3)
-        self.assertEquals(self.walker.count_html_errors("<html><head><title BROKEN><body><p>Missing P</html>"), 3)
+        self.assertEquals(len(self.walker.count_html_errors("")), 1)
+        self.assertEquals(len(self.walker.count_html_errors("<html></html>")), 3)
+        self.assertEquals(len(self.walker.count_html_errors("<html><head><title BROKEN><body><p>Missing P</html>")), 3)
 
         
 
@@ -185,7 +185,7 @@ class TestResponse(unittest.TestCase):
         self.assertEquals(r.code, 200)
         self.assertEquals(r.url, "http://www.google.com/")
         self.assertEquals(r.content_type, "text/html; charset=ISO-8859-1")
-        self.assertTrue("I'm Feeling Lucky" in r.content)
+        self.assertTrue("Feeling Lucky" in r.content)
         self.assertNotEqual(r.htmltree, None)
         
                         
