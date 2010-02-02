@@ -11,39 +11,42 @@
         Combo-handled YUI CDN dependencies from:
         http://developer.yahoo.com/yui/articles/hosting/?connectioncore&datasource&datatable&dragdrop&get&json&logger&reset&DEBUG&norollup
         -->
-        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.8.0r4/build/reset/reset-min.css&amp;2.8.0r4/build/datatable/assets/skins/sam/datatable.css&amp;2.8.0r4/build/logger/assets/skins/sam/logger.css"><!-- Combo-handled YUI JS files: -->
+        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.8.0r4/build/reset/reset-min.css&amp;2.8.0r4/build/datatable/assets/skins/sam/datatable.css&amp;2.8.0r4/build/logger/assets/skins/sam/logger.css">
         <script type="text/javascript" src="http://yui.yahooapis.com/combo?2.8.0r4/build/yahoo/yahoo-debug.js&amp;2.8.0r4/build/event/event-debug.js&amp;2.8.0r4/build/connection/connection_core-debug.js&amp;2.8.0r4/build/datasource/datasource-debug.js&amp;2.8.0r4/build/dom/dom-debug.js&amp;2.8.0r4/build/dragdrop/dragdrop-debug.js&amp;2.8.0r4/build/element/element-debug.js&amp;2.8.0r4/build/datatable/datatable-debug.js&amp;2.8.0r4/build/get/get-debug.js&amp;2.8.0r4/build/json/json-debug.js&amp;2.8.0r4/build/logger/logger-debug.js"></script>
 
+        <link rel="stylesheet" href="webcompare.css" type="text/css" media="screen" charset="utf-8">
         <script src="webcompare.js" type="text/javascript" charset="utf-8"></script>
     </head>
     <body class="yui-skin-sam">
-        <noscript>
-        <p style="font-size: xx-large; font-weight: bold; color: red; text-align: center">
-            You must have JavaScript enabled to use WebCompare
-        </p></noscript>
-        <h1>
-            Result Sets
-        </h1>
-        <h2>
-            PHB Statistics for your TPS Report
-        </h2>
-        <div id="statsTable">
-            Status table should go here
-        </div>
-        <h2>
-            Result Details
-        </h2>
-        <p>
-            Select which types of result you want to view and click the Filter! button.
-        </p>
-        <p>
-            <input type="checkbox" id="GoodResult" checked="checked">Good <input type="checkbox" id="ErrorResult">Error <input type="checkbox" id="BadOriginResult">Bad Origin <input type="checkbox" id="BadTargetResult">Bad Target <input type="submit" id="filter" value="Filter!">
-        </p>
-        <p>
-            Click Origin/Target Code to see the page, and Origin/Target Errors count to display a list of the errors.
-        </p>
-        <div id="resultlist">
-            Result List should go here
+        <div id="container">
+            <noscript>
+            <p style="font-size: xx-large; font-weight: bold; color: red; text-align: center">
+                You must have JavaScript enabled to use WebCompare
+            </p></noscript>
+            <h1>
+                Result Sets
+            </h1>
+            <h2>
+                PHB Statistics for your TPS Report
+            </h2>
+            <div id="statsTable">
+                Status table should go here
+            </div>
+            <h2>
+                Result Details
+            </h2>
+            <p>
+                Select which types of result you want to view and click the Filter! button.
+            </p>
+            <p>
+                <input type="checkbox" id="GoodResult" checked="checked">Good <input type="checkbox" id="ErrorResult">Error <input type="checkbox" id="BadOriginResult">Bad Origin <input type="checkbox" id="BadTargetResult">Bad Target <input type="submit" id="filter" value="Filter!">
+            </p>
+            <p>
+                Click Origin/Target Code to see the page, and Origin/Target Errors count to display a list of the errors.
+            </p>
+            <div id="resultlist">
+                Result List should go here
+            </div>
         </div>
     </body>
 </html>

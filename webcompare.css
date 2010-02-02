@@ -1,0 +1,63 @@
+/* @override http://127.0.0.1/~ctadams/webcompare/webcompare.css */
+
+html {
+    background-color: #e8e8e8;
+    color: black;
+    font-family: "Lucida Grande", Lucida, Verdana, sans-serif;
+    font-size: 10pt;
+}
+
+#container {
+	width: 90%;
+    margin: 1em auto;
+    border: 1px solid #9f9f9f;
+    padding: 1em;
+    text-align:center;
+    background-color: white;
+    
+    border-radius: 4px;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+}
+
+h1, h2 {
+    margin-bottom: .6em;
+    text-align: center;
+    font-weight: bold;
+}
+
+h1 {
+	font-size: xx-large;
+}
+
+h2 {
+    font-size: x-large;
+}
+
+p {
+    margin: .6em .3em;
+}
+
+#container table {
+    margin: 1em auto;
+}
+
+input {
+    margin: .6em .3em;
+}
+
+#container table thead th {
+	font-weight:bold;
+	text-align:center;
+}
+
+#container table thead th a {
+    font-weight: inherit;
+}
+
+#container table tbody td {
+    text-align: right;
+    font-family: Menlo, Consolas,  monospace;
+    font-size: 9pt;
+}
+
