@@ -2,3 +2,4 @@
 #.*
 <bound method.*
 /RSS*
+.*portal_(javascripts|[ck]ss).*
