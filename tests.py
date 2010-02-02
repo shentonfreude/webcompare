@@ -130,9 +130,9 @@ class TestResult(unittest.TestCase):
         self.assertTrue("comp={}" in r.__str__())
 
     def test___init__html_errors(self):
-        r = self.Result("originurl", 200, origin_html_errors=42, target_html_errors=666)
-        self.assertEquals(r.origin_html_errors, 42)
-        self.assertEquals(r.target_html_errors, 666)
+        r = self.Result("originurl", 200, origin_html_errors=["bad"], target_html_errors=["ugly"])
+        self.assertEquals(r.origin_html_errors, 1)
+        self.assertEquals(r.target_html_errors, 1)
 
 
     def test___init__comparisons(self):
