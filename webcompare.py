@@ -375,7 +375,7 @@ class LengthComparator(Comparator):
 if __name__ == "__main__":
     usage = 'usage: %prog [options] origin_url target_url   (do: "%prog --help" for help)'
     parser = OptionParser(usage)
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", help="log info about processing")
+    parser.add_option("-v", "--verbose", action="count", default=0, dest="verbose", help="log info about processing")
     parser.add_option("-f", "--file", dest="filename", help="path to store the json results to (default is stdout)")
     parser.add_option("-i", "--ignorere", dest="ignoreres", action="append", default=[],
                       help="Ignore URLs matching this regular expression, can use multiple times")
@@ -386,10 +386,12 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
     if len(args) != 2:
         parser.error("Must specify origin and target urls")
-    if options.verbose:
+    if options.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
-    else:
+    elif options.verbose:
         logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARN)
 
     if options.ignorere_file:
         file_ignores = open(os.path.expanduser(options.ignorere_file)).readlines()
