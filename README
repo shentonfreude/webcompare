@@ -70,3 +70,5 @@ Allow subclassing of comparators
 Allow subclassing of fetcher, perhaps for one that's asynchronous
 
 Specify file of things to ignore: origin URLs? origin URL regexps? 
+
+Shinier JavaScript
