@@ -1,33 +1,39 @@
 #!/usr/bin/env python
 
-import logging
-from urlparse import urlparse
-import urllib2
-import httplib
-import lxml.html
 from difflib import SequenceMatcher
 from optparse import OptionParser
+from urlparse import urlparse
+
+import httplib
 import json
-import sys
+import logging
+import lxml.html
 import os
 import re                       # "now you've got *two* problems"
+import sys
 import time
+import urllib2
 import _elementtidy
 
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, performance error, comparator stats.
     The HTML errors are actually a list of reported errors, so we can popup details in the report.
-    This simple object seems unnecessarily complex, but it's all defending against abuse. 
+    This simple object seems unnecessarily complex, but it's all defending against abuse.
     Should I just create a Result upon origin retrieval,
     then add attributes to it as further progress is made?
     Instead of trying to do it once for each retrieval outcome?
     """
     def __init__(self,
-                 origin_url,      origin_code,      origin_time=None,
+                 origin_url,
+                 origin_code,
+                 origin_time=None,
                  origin_html_errors=None,
-                 target_url=None, target_code=None, target_time=None,
+                 target_url=None,
+                 target_code=None,
+                 target_time=None,
                  target_html_errors=None,
                  comparisons={}):
+
         self.result_type = self.__class__.__name__
         self.origin_url  = origin_url
         self.origin_code = int(origin_code)
@@ -38,10 +44,11 @@ class Result(object):
         self.target_time = target_time
         self.target_html_errors = target_html_errors
         self.comparisons = comparisons
-        if not hasattr(self.result_type, "lower"):
+        if not isinstance(self.result_type, basestring):
             raise TypeError, "result_type must be a string"
-        if not hasattr(self.origin_url, "lower"):
+        if not isinstance(self.origin_url, basestring):
             raise TypeError, "origin_url must be a string"
+
         if self.origin_code != None and type(self.origin_code) != int:
             raise TypeError, "origin_code=%s must be a int" % self.origin_code
         if self.origin_time != None and type(self.origin_time) != float:
@@ -54,9 +61,11 @@ class Result(object):
             raise TypeError, "target_code=%s must be a int" % self.target_code
         if (self.target_time != None and type(self.target_time) != float):
             raise TypeError, "target_time=%s must be a float" % self.target_time
+
         if self.target_html_errors != None and type(self.target_html_errors) != list:
             raise TypeError, "target_html_errors=%s must be an list (of errors)" % self.target_html_errors
-        if not hasattr(self.comparisons, "keys"):
+
+        if not isinstance(self.comparisons, dict):
             raise TypeError, "comparisons=%s must be a dict" % self.comparisons
                                
         
@@ -86,7 +95,7 @@ class Response(object):
     We need to read content once since we can't reread already-read content.
     We could parse this and save contained URLs? Not generic enough?
     TODO: should subclass (undocumented) urllib2.urlopen() return object urllib.addinfourl ?
-          instead of copying all its attrs into our own? 
+          instead of copying all its attrs into our own?
     TODO: should we avid non-html content?
     """
     def __init__(self, http_response):
@@ -379,7 +388,7 @@ if __name__ == "__main__":
     parser.add_option("-f", "--file", dest="filename", help="path to store the json results to (default is stdout)")
     parser.add_option("-i", "--ignorere", dest="ignoreres", action="append", default=[],
                       help="Ignore URLs matching this regular expression, can use multiple times")
-    parser.add_option("-I", "--ignorere-file", dest="ignorere_file", 
+    parser.add_option("-I", "--ignorere-file", dest="ignorere_file",
                       help="File containtaining regexps specifying URLs to ignore, one per line")
 
     parser.add_option("--profile", action="store_true", default=False, help="Use cProfile to run webcompare")
