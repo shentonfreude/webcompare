@@ -17,7 +17,7 @@ class TestWebCompare(unittest.TestCase):
     def test_fetch_url_content(self):
         response = self.walker._fetch_url("http://google.com")
         self.assert_("Feeling Lucky" in response.content)
-        
+
     def test__get_target_url_abs(self):
         turl = self.walker._get_target_url("http://origin.int/foo/bar/stuff.png")
         self.assertEquals(turl, "http://target.int/foo/bar/stuff.png")
@@ -35,7 +35,7 @@ class TestWebCompare(unittest.TestCase):
     def test__is_within_origin(self):
         self.assertTrue(self.walker._is_within_origin("http://origin.int/some/where"))
 
-        
+
     def test__get_urls_abs(self):
         urls = self.walker._get_urls('<body><a href="http://example.com/foo">foo</a></body>',
                                      base_href="IGNORED")
@@ -61,7 +61,7 @@ class TestWebCompare(unittest.TestCase):
         self.assertEquals(len(self.walker.count_html_errors("<html></html>")), 3)
         self.assertEquals(len(self.walker.count_html_errors("<html><head><title BROKEN><body><p>Missing P</html>")), 3)
 
-        
+
 
 class TestNormalizer(unittest.TestCase):
 
@@ -85,13 +85,13 @@ class TestComparator(unittest.TestCase):
 
     def test_collapse_whitespace(self):
         self.assertEquals(self.comparator.collapse_whitespace("  foo   bar  "), "foo bar")
-        
+
     def test_fuzziness(self):
         self.assertEquals(self.comparator.fuzziness("foo", "foo"), 100)
         self.assertEquals(self.comparator.fuzziness("foo", "foo "), 100)
         self.assertEquals(self.comparator.fuzziness("foo", "Foo"), 100)
         self.assertEquals(self.comparator.fuzziness("foo", "fool"), 85)
-        
+
     def test_unfraction(self):
         self.assertEquals(self.comparator.unfraction(1.0), 100)
         self.assertEquals(self.comparator.unfraction(1), 100)
@@ -99,7 +99,7 @@ class TestComparator(unittest.TestCase):
         self.assertEquals(self.comparator.unfraction(0), 0)
         self.assertEquals(self.comparator.unfraction(1.0/3.0), 33)
 
-        
+
 class TestResult(unittest.TestCase):
 
     def setUp(self):
@@ -148,15 +148,15 @@ class TestResult(unittest.TestCase):
         self.assertEquals(r.result_type, "BadTargetResult")
         r = self.GoodResult("origin", 666)
         self.assertEquals(r.result_type, "GoodResult")
-        
-            
+
+
 class TestWalkerJsonResults(unittest.TestCase):
     def setup(self):
         pass
 
     def test_json_results(self):
         import json
-        from webcompare import Walker     
+        from webcompare import Walker
         from webcompare import ErrorResult, BadOriginResult, BadTargetResult, GoodResult
         walker = Walker("origin", "target")
         walker.results.extend([ErrorResult("e1", 0),
@@ -179,7 +179,7 @@ class TestResponse(unittest.TestCase):
         self.Response = Response
         self.urlopen = urlopen
         self.url = "http://google.com"
-        
+
     def test_http_response(self):
         r = self.Response(self.urlopen(self.url))
         self.assertEquals(r.code, 200)
@@ -187,8 +187,8 @@ class TestResponse(unittest.TestCase):
         self.assertEquals(r.content_type, "text/html; charset=ISO-8859-1")
         self.assertTrue("Feeling Lucky" in r.content)
         self.assertNotEqual(r.htmltree, None)
-        
-                        
+
+
 class TestUrlManglers(unittest.TestCase):
     def SetUp(self):
         pass
@@ -201,7 +201,7 @@ class TestUrlManglers(unittest.TestCase):
         self.assertEquals(w._normalize_url("http://example.com/something"), "http://example.com/something")
         self.assertEquals(w._normalize_url("http://example.com/<bound method Application.absolute_url of <Application at >>"), "http://example.com/")
         self.assertEquals(w._normalize_url("http://example.com/something/RSS"), "http://example.com/something")
-        
+
 if __name__ == '__main__':
     unittest.main()
 
