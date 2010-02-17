@@ -382,6 +382,8 @@ if __name__ == "__main__":
     parser.add_option("-I", "--ignorere-file", dest="ignorere_file", 
                       help="File containtaining regexps specifying URLs to ignore, one per line")
 
+    parser.add_option("--profile", action="store_true", default=False, help="Use cProfile to run webcompare")
+
     ignoreres = []              # why isn't this set by the parser.add_option above?
     (options, args) = parser.parse_args()
     if len(args) != 2:
@@ -406,6 +408,11 @@ if __name__ == "__main__":
     else:
         f = sys.stdout
 
+    if options.profile:
+        import cProfile
+        profiler = cProfile.Profile()
+        profiler.enable()
+
     w = Walker(args[0], args[1], ignoreres=options.ignoreres)
     w.add_comparator(LengthComparator())
     w.add_comparator(TitleComparator())
@@ -414,3 +421,13 @@ if __name__ == "__main__":
     w.walk_and_compare()
     f.write(w.json_results())
     f.close()
+
+    if options.profile:
+        profiler.disable()
+        profiler.dump_stats("webcompare.cprofile")
+
+        print
+        print "Dumped cProfile data to webcompare.cprofile: try loading it with `python -mpstats webcompare.cprofile`"
+        print
+
+        profiler.print_stats(sort=1)
