@@ -56,11 +56,26 @@ YAHOO.util.Event.onDOMReady(function () {
 
             var statsTable = new YAHOO.widget.DataTable("statsTable", statsColumns, statsSource);
 
-            var dataSource = new YAHOO.util.DataSource(data.results.resultlist, {
-                doBeforeCallback : function (req, raw, res, cb) { // filter
+            function flatten_results(input) {
+                var res = [];
+
+                for (var i=0; i < input.resultlist.length; i++) {
+                    var tmp = input.resultlist[i];
+                    for (var k in tmp.comparisons) {
+                        tmp[k] = tmp.comparisons[k];
+                    }
+                    res.push(tmp);
+                };
+
+                return res;
+            }
+
+            var dataSource = new YAHOO.util.FunctionDataSource(function () { return flatten_results(data.results); }, {
+                doBeforeCallback : function (req, oFullResponse, res, cb) {
                     var data     = res.results || [];
                     var filtered = [];
                     var i, l;
+
                     var resFilter = getResFilter();
                     for (i = 0, l = data.length; i < l; i = i + 1) {
                         if (resFilter[data[i].result_type]) {
@@ -71,7 +86,7 @@ YAHOO.util.Event.onDOMReady(function () {
                     return res;
                 }
             });
-            dataSource.responseType = YAHOO.util.XHRDataSource.TYPE_JSARRAY;
+            dataSource.responseType = YAHOO.util.DataSource.TYPE_JSARRAY;
             dataSource.responseSchema = {
                 fields: ["result_type",
                          "origin_url", "target_url",
