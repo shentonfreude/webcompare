@@ -67,8 +67,8 @@ class Result(object):
 
         if not isinstance(self.comparisons, dict):
             raise TypeError, "comparisons=%s must be a dict" % self.comparisons
-                               
-        
+
+
     def __str__(self):
         return "<%s o=%s oc=%s t=%s tc=%s comp=%s>" % (
             self.result_type,
@@ -113,7 +113,7 @@ class Response(object):
             self.htmltree.make_links_absolute(self.url, resolve_base_href=True)
         else:
             self.htmltree = None
-        
+
 class Walker(object):
     """
     Walk origin URL, generate target URLs, retrieve both pages for comparison.
@@ -143,7 +143,7 @@ class Walker(object):
         If this causes an exception, we just leave it for the caller.
         """
         return Response(urllib2.urlopen(url))
-    
+
     def _get_target_url(self, origin_url):
         """Return URL for target based on (absolute) origin_url.
         TODO: do I want to handle relative origin_urls?
@@ -168,7 +168,7 @@ class Walker(object):
         for ignorere in self.ignoreres:
             url = re.sub(ignorere, "", url)
         return url
-        
+
     def _get_urls(self, html, base_href): # UNUSED?
         """Return list of objects representing absolute URLs found in the html.
         [(element, attr, link, pos) ...]
@@ -200,7 +200,7 @@ class Walker(object):
         #return len(log.splitlines())
         # return the *list* of errors, for rendering in JS as a popup
         return log.splitlines()
-        
+
 
     def json_results(self):
         """Return the JSON representation of results and stats.
@@ -215,11 +215,11 @@ class Walker(object):
         all_results = dict(results=dict(resultlist=result_list, stats=stats))
         json_results = json.dumps(all_results, sort_keys=True, indent=4)
         return json_results
-    
+
     def walk_and_compare(self):
         """Start at origin_url, generate target urls, run comparators, return dict of results.
         If there are no comparators, we will just return all the origin and target urls
-        and any redirects we've encountered. 
+        and any redirects we've encountered.
         TODO: remove unneeded testing and logging, clean up if/else/continue
         """
         while self.origin_urls_todo:
@@ -285,10 +285,10 @@ class Walker(object):
                 self.results.append(result)
                 logging.info(result)
 
-                    
 
-# TODO: instantiation and invocation of Normalizer and Comparator feels stilted and awkward. 
-            
+
+# TODO: instantiation and invocation of Normalizer and Comparator feels stilted and awkward.
+
 class Normalizer(object):
     """TODO: should I be subclassing an LXML stipper? (oh baby)
     """
@@ -315,7 +315,7 @@ class Comparator(object):
     def unfraction(self, number):
         """Convert a 0 - 1 fractional into our match range"""
         return int((self.match_perfect - self.match_nothing) * number)
-    
+
     def fuzziness(self, origin_text, target_text):
         """Return a fuzzy comparison value for the two (preprocessed) texts"""
         if origin_text and target_text:
@@ -325,17 +325,17 @@ class Comparator(object):
             return self.unfraction(sm.ratio())
         else:
             return self.match_nothing
-        
+
     def collapse_whitespace(self, text):
         """Collapse multiple whitespace chars to a single space.
         """
         return ' '.join(text.split())
-        
+
     def compare(self, origin_response, target_response):
         """This is expected to be subclassed and then superclass invoked.
         """
         raise RuntimeError, "You need to subclass class=%s" % self.__class__.__name__
-        
+
 class TitleComparator(Comparator):
     """Compare <title> content from the reponse in a fuzzy way.
     Origin: "NASA Science", Target: "Site Map - NASA Science"
@@ -379,8 +379,8 @@ class LengthComparator(Comparator):
         else:
             fraction = tlen / olen
         return self.unfraction(fraction)
-        
-    
+
+
 if __name__ == "__main__":
     usage = 'usage: %prog [options] origin_url target_url   (do: "%prog --help" for help)'
     parser = OptionParser(usage)
