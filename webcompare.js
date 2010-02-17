@@ -28,7 +28,11 @@ YAHOO.util.Event.onDOMReady(function () {
                                     "' target='_target'>" + sData + "</a>" : '');
             };
             var formatDownloadTime = function (elCell, oRecord, oColumn, sData) {
-                elCell.innerHTML = Math.round(sData * 100) / 100 || sData;
+                if (sData == null) {
+                    elCell.innerHTML = "";
+                } else {
+                    elCell.innerHTML = YAHOO.util.Number.format(sData * 1, {decimalPlaces:2});
+                }
             };
             var formatHtmlErrors = function (elCell, oRecord, oColumn, sData) {
                 elCell.innerHTML = (sData ? sData.length : '');
@@ -88,31 +92,36 @@ YAHOO.util.Event.onDOMReady(function () {
             });
             dataSource.responseType = YAHOO.util.DataSource.TYPE_JSARRAY;
             dataSource.responseSchema = {
-                fields: ["result_type",
-                         "origin_url", "target_url",
-                         "origin_code", "target_code",
-                         "origin_time", "target_time",
-                         "origin_html_errors", "target_html_errors",
-                         {key: "comparisons.BodyComparator",    parser: "number"},
-                         {key: "comparisons.ContentComparator", parser: "number"},
-                         {key: "comparisons.LengthComparator",  parser: "number"},
-                         {key: "comparisons.TitleComparator",   parser: "number"}
-                        ]
+                fields: [
+                    "result_type",
+                     "origin_url",
+                     "target_url",
+                     {key: "origin_code",        parser: "number"},
+                     {key: "target_code",        parser: "number"},
+                     {key: "origin_time",        parser: "number"},
+                     {key: "target_time",        parser: "number"},
+                     {key: "origin_html_errors", parser: "number"},
+                     {key: "target_html_errors", parser: "number"},
+                     {key: "BodyComparator",     parser: "number"},
+                     {key: "ContentComparator",  parser: "number"},
+                     {key: "LengthComparator",   parser: "number"},
+                     {key: "TitleComparator",    parser: "number"}
+                ]
             };
 
             var tableColumns = [
-                {key: "result_type",                   label: "Result<br/>Type",      sortable: true},
-                {key: "origin_code",                   label: "Origin<br/>Code",      sortable: true, formatter: formatOriginCode},
-                {key: "target_code",                   label: "Target<br/>Code",      sortable: true, formatter: formatTargetCode},
-                {key: "origin_time",                   label: "Origin<br/>Time",      sortable: true, formatter: formatDownloadTime},
-                {key: "target_time",                   label: "Target<br/>Time",      sortable: true, formatter: formatDownloadTime},
-                {key: "origin_html_errors",            label: "Origin<br/>Errors",    sortable: true, formatter: formatHtmlErrors},
-                {key: "target_html_errors",            label: "Target<br/>Errors",    sortable: true, formatter: formatHtmlErrors},
-                {key: "comparisons.BodyComparator",    label: "Body<br/>proxim",      sortable: true},
-                {key: "comparisons.ContentComparator", label: "Content<br/>proxim",   sortable: true},
-                {key: "comparisons.LengthComparator",  label: "Length<br/>proxim",    sortable: true},
-                {key: "comparisons.TitleComparator",   label: "Title<br/>proxim",     sortable: true},
-                {key: "origin_url",                    label: "URL Path",             sortable: true, formatter: formatUrlPath}
+                {key: "result_type",                    label: "Result<br/>Type",      sortable: true},
+                {key: "origin_code",                    label: "Origin<br/>Code",      sortable: true, formatter: formatOriginCode},
+                {key: "target_code",                    label: "Target<br/>Code",      sortable: true, formatter: formatTargetCode},
+                {key: "origin_time",                    label: "Origin<br/>Time",      sortable: true, formatter: formatDownloadTime},
+                {key: "target_time",                    label: "Target<br/>Time",      sortable: true, formatter: formatDownloadTime},
+                {key: "origin_html_errors",             label: "Origin<br/>Errors",    sortable: true, formatter: formatHtmlErrors},
+                {key: "target_html_errors",             label: "Target<br/>Errors",    sortable: true, formatter: formatHtmlErrors},
+                {key: "BodyComparator",                 label: "Body<br/>proxim",      sortable: true},
+                {key: "ContentComparator",              label: "Content<br/>proxim",   sortable: true},
+                {key: "LengthComparator",               label: "Length<br/>proxim",    sortable: true},
+                {key: "TitleComparator",                label: "Title<br/>proxim",     sortable: true},
+                {key: "origin_url",                     label: "URL Path",             sortable: true, formatter: formatUrlPath}
             ];
 
             var dataTable = new YAHOO.widget.DataTable("resultlist", tableColumns, dataSource);
