@@ -254,7 +254,7 @@ class Walker(object):
                 except urllib2.URLError, e:
                     result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
                                              origin_html_errors=origin_html_errors,
-                                             target_url=target_url, target_code=e.code)
+                                             target_url=target_url, target_code=getattr(e, "code", e.errno))
                     self.results.append(result)
                     logging.warning(result)
                     continue
