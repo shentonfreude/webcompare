@@ -8,6 +8,7 @@ import httplib
 import json
 import logging
 import lxml.html
+from lxml.etree import XPath
 import os
 import re                       # "now you've got *two* problems"
 import sys
@@ -133,6 +134,8 @@ class Walker(object):
         self.origin_urls_todo = [self.origin_url_base]
         self.origin_urls_visited = []
         self.ignoreres = [re.compile(ignorere) for ignorere in ignoreres]
+        self.origin_noise_xpaths = []
+        self.target_noise_xpaths = []
 
     def _texas_ranger(self):
         return "I think our next place to search is where military and wannabe military types hang out."
@@ -267,23 +270,33 @@ class Walker(object):
                     self.results.append(result)
                     logging.warning(result)
                     continue
-                comparisons = {}
-                if origin_response.htmltree == None or target_response.htmltree == None:
-                    logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
-                            origin_response.htmltree, target_response.htmltree))
-                else:
-                    target_html_errors = self.count_html_errors(target_response.content)
-                    for comparator in self.comparators:
-                        proximity = comparator.compare(origin_response, target_response)
-                        comparisons[comparator.__class__.__name__] = proximity
-                result = GoodResult(origin_url, origin_response.code, origin_time=origin_time,
-                                    origin_html_errors=origin_html_errors,
-                                    target_url=target_url, target_code=target_response.code,
-                                    target_time=target_time,
-                                    target_html_errors=target_html_errors,
-                                    comparisons=comparisons)
-                self.results.append(result)
-                logging.info(result)
+
+        # De-noising step:
+        for xp in self.origin_noise_xpaths:
+            for e in xp(origin_response.htmltree):
+                e.getparent().remove(e)
+
+        for xp in self.target_noise_xpaths:
+            for e in xp(target_response.htmltree):
+                e.getparent().remove(e)
+
+        comparisons = {}
+        if origin_response.htmltree == None or target_response.htmltree == None:
+            logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
+                    origin_response.htmltree, target_response.htmltree))
+        else:
+            target_html_errors = self.count_html_errors(target_response.content)
+            for comparator in self.comparators:
+                proximity = comparator.compare(origin_response, target_response)
+                comparisons[comparator.__class__.__name__] = proximity
+        result = GoodResult(origin_url, origin_response.code, origin_time=origin_time,
+                            origin_html_errors=origin_html_errors,
+                            target_url=target_url, target_code=target_response.code,
+                            target_time=target_time,
+                            target_html_errors=target_html_errors,
+                            comparisons=comparisons)
+        self.results.append(result)
+        logging.info(result)
 
 
 
@@ -390,6 +403,10 @@ if __name__ == "__main__":
                       help="Ignore URLs matching this regular expression, can use multiple times")
     parser.add_option("-I", "--ignorere-file", dest="ignorere_file",
                       help="File containtaining regexps specifying URLs to ignore, one per line")
+    parser.add_option("--origin-noise-xpath-file",
+                      help="File containing XPath expressions to strip from origin server responses before comparison")
+    parser.add_option("--target-noise-xpath-file",
+                      help="File containing XPath expressions to strip from target server responses before comparison")
 
     parser.add_option("--profile", action="store_true", default=False, help="Use cProfile to run webcompare")
 
@@ -427,16 +444,23 @@ if __name__ == "__main__":
     w.add_comparator(TitleComparator())
     w.add_comparator(BodyComparator())
     w.add_comparator(ContentComparator())
+
+    if options.origin_noise_xpath_file:
+        w.origin_noise_xpaths = [ XPath(xp) for xp in file(options.origin_noise_xpath_file) ]
+    if options.target_noise_xpath_file:
+        w.target_noise_xpaths = [ XPath(xp) for xp in file(options.target_noise_xpath_file) ]
+
     w.walk_and_compare()
     f.write(w.json_results())
-    f.close()
+    if f != sys.stdout:
+        f.close()
 
     if options.profile:
         profiler.disable()
         profiler.dump_stats("webcompare.cprofile")
 
-        print
-        print "Dumped cProfile data to webcompare.cprofile: try loading it with `python -mpstats webcompare.cprofile`"
-        print
+        profiler.print_stats(sort="cumulative")
 
-        profiler.print_stats(sort=1)
+        print
+        print "Dumped full cProfile data to webcompare.cprofile: try loading it with `python -mpstats webcompare.cprofile`"
+        print
