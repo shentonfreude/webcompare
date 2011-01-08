@@ -14,7 +14,7 @@ import re                       # "now you've got *two* problems"
 import sys
 import time
 import urllib2
-import _elementtidy
+import _elementtidy             # easy_install http://effbot.org/media/downloads/elementtidy-1.0-20050212.zip
 
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, performance error, comparator stats.
@@ -267,6 +267,10 @@ class Walker(object):
                     result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
                                              origin_html_errors=origin_html_errors,
                                              target_url=target_url, target_code=getattr(e, "code", e.errno))
+                except httplib.BadStatusLine, e:
+                    result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
+                                             origin_html_errors=origin_html_errors,
+                                             target_url=target_url, target_code=0)
                     self.results.append(result)
                     logging.warning(result)
                     continue
