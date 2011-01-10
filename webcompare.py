@@ -14,7 +14,7 @@ import re                       # "now you've got *two* problems"
 import sys
 import time
 import urllib2
-import _elementtidy             # easy_install http://effbot.org/media/downloads/elementtidy-1.0-20050212.zip
+import _elementtidy
 
 class Result(object):
     """Return origin and target URL, HTTP success code, redirect urls, performance error, comparator stats.
