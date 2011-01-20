@@ -8,6 +8,20 @@
         </title>
 
         <!--
+           You can't serve from file:/// URLs due to security restrictions:
+           "Unable to load webcompare data: 0:communications failure" and
+           "XMLHttpRequest cannot load file:///.... Origin null is not
+           allowed by Access-Control-Allow-Origin."
+
+           Save the output as 'webcompare.json' and put all files into some
+           web-served directory like ~/public_html/webcompare/ or (on OS X)
+           ~/Sites/webcompare/.
+
+           Then access like:
+           http://localhost/~myusername/webcompare/webcompare.html
+          -->
+
+        <!--
         Combo-handled YUI CDN dependencies from:
         http://developer.yahoo.com/yui/articles/hosting/?connectioncore&datasource&datatable&dragdrop&get&json&logger&reset&DEBUG&norollup
         -->
