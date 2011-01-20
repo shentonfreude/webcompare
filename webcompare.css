@@ -61,3 +61,6 @@ input {
     font-size: 9pt;
 }
 
+#container table .yui-dt1-col-origin_url {
+    text-align: left;
+}
