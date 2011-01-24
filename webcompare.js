@@ -35,7 +35,7 @@ YAHOO.util.Event.onDOMReady(function () {
                 }
             };
             var formatHtmlErrors = function (elCell, oRecord, oColumn, sData) {
-                elCell.innerHTML = (sData ? sData.length : '');
+                elCell.innerHTML = (sData ? sData.length : ''); // how to higlight linkability?
             };
             var getResFilter = function () {
                 var resFilter = {};
@@ -56,7 +56,7 @@ YAHOO.util.Event.onDOMReady(function () {
                 {key: "BadOriginResult",     label: "Bad Origin"},
                 {key: "BadTargetResult",     label: "Bad Target"},
                 {key: "GoodResult",          label: "Good"}
-                ];
+            ];
 
             var statsTable = new YAHOO.widget.DataTable("statsTable", statsColumns, statsSource);
 
@@ -69,8 +69,7 @@ YAHOO.util.Event.onDOMReady(function () {
                         tmp[k] = tmp.comparisons[k];
                     }
                     res.push(tmp);
-                };
-
+                }
                 return res;
             }
 
