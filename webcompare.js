@@ -94,18 +94,18 @@ YAHOO.util.Event.onDOMReady(function () {
             dataSource.responseSchema = {
                 fields: [
                     "result_type",
-                     "origin_url",
-                     "target_url",
-                     {key: "origin_code",        parser: "number"},
-                     {key: "target_code",        parser: "number"},
-                     {key: "origin_time",        parser: "number"},
-                     {key: "target_time",        parser: "number"},
-                     {key: "origin_html_errors", parser: "number"},
-                     {key: "target_html_errors", parser: "number"},
-                     {key: "BodyComparator",     parser: "number"},
-                     {key: "ContentComparator",  parser: "number"},
-                     {key: "LengthComparator",   parser: "number"},
-                     {key: "TitleComparator",    parser: "number"}
+                    "origin_url",
+                    "target_url",
+                    {key: "origin_code",        parser: "number"},
+                    {key: "target_code",        parser: "number"},
+                    {key: "origin_time",        parser: "number"},
+                    {key: "target_time",        parser: "number"},
+                    "origin_html_errors",
+                    "target_html_errors",
+                    {key: "BodyComparator",     parser: "number"},
+                    {key: "ContentComparator",  parser: "number"},
+                    {key: "LengthComparator",   parser: "number"},
+                    {key: "TitleComparator",    parser: "number"}
                 ]
             };
 
