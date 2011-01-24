@@ -267,6 +267,9 @@ class Walker(object):
                     result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
                                              origin_html_errors=origin_html_errors,
                                              target_url=target_url, target_code=getattr(e, "code", e.errno))
+                    self.results.append(result)
+                    logging.warning(result)
+                    continue
                 except httplib.BadStatusLine, e:
                     result = BadTargetResult(origin_url, origin_response.code, origin_time=origin_time,
                                              origin_html_errors=origin_html_errors,
@@ -275,32 +278,32 @@ class Walker(object):
                     logging.warning(result)
                     continue
 
-        # De-noising step:
-        for xp in self.origin_noise_xpaths:
-            for e in xp(origin_response.htmltree):
-                e.getparent().remove(e)
+                # De-noising step:
+                for xp in self.origin_noise_xpaths:
+                    for e in xp(origin_response.htmltree):
+                        e.getparent().remove(e)
+                for xp in self.target_noise_xpaths:
+                    for e in xp(target_response.htmltree):
+                        e.getparent().remove(e)
 
-        for xp in self.target_noise_xpaths:
-            for e in xp(target_response.htmltree):
-                e.getparent().remove(e)
+                if origin_response.htmltree == None or target_response.htmltree == None:
+                    logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
+                            origin_response.htmltree, target_response.htmltree))
+                else:
+                    target_html_errors = self.count_html_errors(target_response.content)
+                    comparisons = {}
+                    for comparator in self.comparators:
+                        proximity = comparator.compare(origin_response, target_response)
+                        comparisons[comparator.__class__.__name__] = proximity
 
-        comparisons = {}
-        if origin_response.htmltree == None or target_response.htmltree == None:
-            logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
-                    origin_response.htmltree, target_response.htmltree))
-        else:
-            target_html_errors = self.count_html_errors(target_response.content)
-            for comparator in self.comparators:
-                proximity = comparator.compare(origin_response, target_response)
-                comparisons[comparator.__class__.__name__] = proximity
-        result = GoodResult(origin_url, origin_response.code, origin_time=origin_time,
-                            origin_html_errors=origin_html_errors,
-                            target_url=target_url, target_code=target_response.code,
-                            target_time=target_time,
-                            target_html_errors=target_html_errors,
-                            comparisons=comparisons)
-        self.results.append(result)
-        logging.info(result)
+                result = GoodResult(origin_url, origin_response.code, origin_time=origin_time,
+                                    origin_html_errors=origin_html_errors,
+                                    target_url=target_url, target_code=target_response.code,
+                                    target_time=target_time,
+                                    target_html_errors=target_html_errors,
+                                    comparisons=comparisons)
+                self.results.append(result)
+                logging.info(result)
 
 
 
