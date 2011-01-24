@@ -11,7 +11,7 @@
 "use strict";
 YAHOO.util.Event.onDOMReady(function () {
     var WebCompare = {
-        load: function(data) {
+        load: function (data) {
             var urlPath = function (url) {
                 return url.replace(/http:\/\/[\w.]+/, '');
             };
@@ -28,10 +28,10 @@ YAHOO.util.Event.onDOMReady(function () {
                                     "' target='_target'>" + sData + "</a>" : '');
             };
             var formatDownloadTime = function (elCell, oRecord, oColumn, sData) {
-                if (sData == null) {
+                if (sData === null) {
                     elCell.innerHTML = "";
                 } else {
-                    elCell.innerHTML = YAHOO.util.Number.format(sData * 1, {decimalPlaces:2});
+                    elCell.innerHTML = YAHOO.util.Number.format(sData * 1, {decimalPlaces: 2});
                 }
             };
             var formatHtmlErrors = function (elCell, oRecord, oColumn, sData) {
@@ -63,7 +63,7 @@ YAHOO.util.Event.onDOMReady(function () {
             function flatten_results(input) {
                 var res = [];
 
-                for (var i=0; i < input.resultlist.length; i++) {
+                for (var i = 0; i < input.resultlist.length; i += 1) {
                     var tmp = input.resultlist[i];
                     for (var k in tmp.comparisons) {
                         tmp[k] = tmp.comparisons[k];
@@ -74,14 +74,14 @@ YAHOO.util.Event.onDOMReady(function () {
                 return res;
             }
 
-            var dataSource = new YAHOO.util.FunctionDataSource(function () { return flatten_results(data.results); }, {
+            var dataSource = new YAHOO.util.FunctionDataSource(function () { return flatten_results(data.results);}, {
                 doBeforeCallback : function (req, oFullResponse, res, cb) {
                     var data     = res.results || [];
                     var filtered = [];
                     var i, l;
 
                     var resFilter = getResFilter();
-                    for (i = 0, l = data.length; i < l; i = i + 1) {
+                    for (i = 0, l = data.length; i < l; i += 1) {
                         if (resFilter[data[i].result_type]) {
                             filtered.push(data[i]);
                         }
@@ -163,7 +163,7 @@ YAHOO.util.Event.onDOMReady(function () {
 
     YAHOO.util.Connect.asyncRequest('GET', document.location.href.replace("html", "json"),
     {
-        success: function(o) {
+        success: function (o) {
             // Use the JSON Utility to parse the data returned from the server
             try {
                 data = YAHOO.lang.JSON.parse(o.responseText);
@@ -175,7 +175,7 @@ YAHOO.util.Event.onDOMReady(function () {
 
             WebCompare.load(data);
         },
-        failure: function(o) {
+        failure: function (o) {
             alert("Unable to load webcompare data: " + o.status + ":" + o.statusText);
         }
     });
