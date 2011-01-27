@@ -7,6 +7,7 @@
 
 // I'm not proud of this: my first JavaScript, cargo-culted from the YUI site.
 
+var data;	// I need this for Firefox4 else complains about undefined 'data' during assignment but doesn't say where.
 
 "use strict";
 YAHOO.util.Event.onDOMReady(function () {
