@@ -202,7 +202,7 @@ class Walker(object):
         xhtml, log = _elementtidy.fixup(html)
         #return len(log.splitlines())
         # return the *list* of errors, for rendering in JS as a popup
-        return log.splitlines()
+        return unicode(log, errors='ignore').splitlines()
 
 
     def json_results(self):
@@ -216,7 +216,11 @@ class Walker(object):
             stats[r.result_type] = stats.get(r.result_type, 0) + 1
         result_list = [r.__dict__ for r in self.results]
         all_results = dict(results=dict(resultlist=result_list, stats=stats))
-        json_results = json.dumps(all_results, sort_keys=True, indent=4)
+        try:
+            json_results = json.dumps(all_results, sort_keys=True, indent=4)
+        except UnicodeDecodeError, e:
+            logging.error("Unicode error %s" % e)
+            import pdb; pdb.set_trace() # wait for a human!!!!!!!!!
         return json_results
 
     def walk_and_compare(self):
@@ -230,7 +234,7 @@ class Walker(object):
             lt = len(self.origin_urls_todo)
             logging.info("visited=%s todo=%s %03s%% try url=%s" % (
                     lv, lt, int(100.0 * lv / (lv + lt)), self.origin_urls_todo[0]))
-            origin_url = self.origin_urls_todo.pop(0)
+            origin_url = unicode(self.origin_urls_todo.pop(0), errors='ignore')
             self.origin_urls_visited.append(origin_url)
             try:
                 t = time.time()
