@@ -293,6 +293,8 @@ class Walker(object):
                 if origin_response.htmltree == None or target_response.htmltree == None:
                     logging.warning("compare: None for origin htmltree=%s or target htmltree=%s" % (
                             origin_response.htmltree, target_response.htmltree))
+                    target_html_errors=[]
+                    comparisons={}
                 else:
                     target_html_errors = self.count_html_errors(target_response.content)
                     comparisons = {}
